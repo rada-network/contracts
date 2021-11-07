@@ -3,19 +3,19 @@ const { BigNumber } = require('ethers')
 // @ts-ignore
 import {ethers, upgrades} from "hardhat"
 
-const _tradeValue = BigNumber.from(1).div(100).mul(1000000000).mul(1000000000).toString(); // Gia tuong duong voi BNB
-const _tokensForSale = BigNumber.from(2500000).mul(1000000000).mul(1000000000).toString();
-const _startDate = '1622505600' // https://www.epochconverter.com/
-const _endDate = '1667260800' // https://www.epochconverter.com/
-const _individualMinimumAmount = '0'
-const _individualMaximumAmount = BigNumber.from(2500000).mul(1000000000).mul(1000000000).toString();
-const _isTokenSwapAtomic = false
-const _minimumRaise = BigNumber.from(1000000).mul(1000000000).mul(1000000000).toString();
-const _feeAmount = '1'
-const _hasWhitelisting = false
-let addressToken = ''
-
 describe("FixedSwap", function () {
+
+    const _tradeValue = BigNumber.from(1).div(100).mul(1000000000).mul(1000000000).toString(); // Gia tuong duong voi BNB
+    const _tokensForSale = BigNumber.from(2500000).mul(1000000000).mul(1000000000).toString();
+    const _startDate = '1622505600' // https://www.epochconverter.com/
+    const _endDate = '1667260800' // https://www.epochconverter.com/
+    const _individualMinimumAmount = '0'
+    const _individualMaximumAmount = BigNumber.from(2500000).mul(1000000000).mul(1000000000).toString();
+    const _isTokenSwapAtomic = false
+    const _minimumRaise = BigNumber.from(1000000).mul(1000000000).mul(1000000000).toString();
+    const _feeAmount = '1'
+    const _hasWhitelisting = false
+    let addressToken = ''
 
     it("Deploy Token", async function () {
         const RIRContract = await ethers.getContractFactory("RIRContract");

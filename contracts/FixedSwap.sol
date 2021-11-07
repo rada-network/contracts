@@ -5,53 +5,9 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "./common/Whitelist.sol";
 import "hardhat/console.sol";
-
-contract Whitelist is Ownable {
-
-    mapping(address => bool) public whitelist;
-    address[] public whitelistedAddresses;
-    bool public hasWhitelisting = false;
-    uint256 private constant _TIMELOCK = 1 days;
-
-    event AddedToWhitelist(address[] indexed accounts);
-    event RemovedFromWhitelist(address indexed account);
-
-    modifier onlyWhitelisted() {
-        if (hasWhitelisting) {
-            require(isWhitelisted(msg.sender));
-        }
-        _;
-    }
-
-    constructor(bool _hasWhitelisting) {
-        hasWhitelisting = _hasWhitelisting;
-    }
-
-    function add(address[] memory _addresses) public onlyOwner {
-        for (uint256 i = 0; i < _addresses.length; i++) {
-            require(whitelist[_addresses[i]] != true);
-            whitelist[_addresses[i]] = true;
-            whitelistedAddresses.push(_addresses[i]);
-        }
-        emit AddedToWhitelist(_addresses);
-    }
-
-    function remove(address _address, uint256 _index) public onlyOwner {
-        require(_address == whitelistedAddresses[_index]);
-        whitelist[_address] = false;
-        delete whitelistedAddresses[_index];
-        emit RemovedFromWhitelist(_address);
-    }
-
-    function getWhitelistedAddresses() public view returns (address[] memory) {
-        return whitelistedAddresses;
-    }
-
-    function isWhitelisted(address _address) public view returns (bool) {
-        return whitelist[_address];
-    }
-}
 
 contract FixedSwap is Pausable, Whitelist {
     using SafeMath for uint256;
@@ -116,10 +72,10 @@ contract FixedSwap is Pausable, Whitelist {
             block.timestamp < _endDate,
             "End Date should be further than current date"
         );
-        // require(
-        //     block.timestamp < _startDate,
-        //     "Start Date should be further than current date"
-        // );
+         require(
+             block.timestamp < _startDate,
+             "Start Date should be further than current date"
+         );
         require(_startDate < _endDate, "End Date higher than Start Date");
         require(_tokensForSale > 0, "Tokens for Sale should be > 0");
         require(
