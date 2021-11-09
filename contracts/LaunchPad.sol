@@ -124,8 +124,7 @@ contract LaunchPad is Pausable, Whitelist {
     }
 
     function isBuyerHasPermissionBuy(address buyer) external view returns (bool) {
-        require(rirAddress.balanceOf(buyer) > 0, "Buyer dont have permission buy token");
-        return true;
+        return rirAddress.balanceOf(buyer) > 0;
     }
 
     function checkBuyerCanBuy(address buyer) external view returns (bool){
@@ -137,9 +136,16 @@ contract LaunchPad is Pausable, Whitelist {
         return canBuyToken && hasRir && hasBusd;
     }
 
-
     /* Swap Functions */
     function swap(uint256 _amount) external {
+        if(isBuyerHasPermissionBuy(msg.sender)) {
+            swapBuyerHasPermissionBuy(_amount);
+        } else {
+            require(isWhitelisted(msg.sender),'You are not in whitelist');
+        }
+    }
+
+    function swapBuyerHasPermissionBuy(uint256 _amount) private {
 
     }
 }

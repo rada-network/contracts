@@ -58,8 +58,8 @@ describe("LaunchPad", async function () {
     it('Buyer Has Not Permission Buy Token', async function () {
         const amountOwner = await rirContract.balanceOf(owner.address);
         expect(utils.formatEther(amountOwner)).to.equal("0.0");
-        await expect(launchPadContract.isBuyerHasPermissionBuy(owner.address))
-            .to.be.revertedWith('Buyer dont have permission buy token');
+        const canBuy = await launchPadContract.isBuyerHasPermissionBuy(owner.address)
+        expect(canBuy).to.equal(false);
     })
 
 });
