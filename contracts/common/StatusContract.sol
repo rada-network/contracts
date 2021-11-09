@@ -2,7 +2,7 @@
 pragma solidity ^0.8.2;
 
 contract StatusContract {
-    enum StatusOrder{ PENDING, PAYMENT, COMPLETE }
+    enum StatusOrder{ PENDING, ACCEPT, COMPLETE }
     StatusOrder status;
     StatusOrder constant defaultStatus = StatusOrder.PENDING;
 
