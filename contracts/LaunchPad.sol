@@ -48,14 +48,13 @@ contract LaunchPad is Pausable, Whitelist {
         address _bUSDAddress,
         address _rirAddress,
         uint256 _tokenPrice, // Price Token (Ex: 1 TOKEN = 0.01 BUSD)
-    //        uint256 _tokensForSale,
+        uint256 _tokensForSale,
     //        uint256 _startDate,
     //        uint256 _endDate,
-    //        uint256 _individualMinimumAmount,
-    //        uint256 _individualMaximumAmount,
+        uint256 _individualMinimumAmount,
+        uint256 _individualMaximumAmount,
         bool _hasWhitelisting
     ) Whitelist(_hasWhitelisting) {
-
         //        require(
         //            block.timestamp < _endDate,
         //            "End Date should be further than current date"
@@ -68,22 +67,26 @@ contract LaunchPad is Pausable, Whitelist {
         //
         //        require(_startDate < _endDate, "End Date higher than Start Date");
         //
-        //        require(_tokensForSale > 0, "Tokens for Sale should be > 0");
-        //
-        //        require(
-        //            _tokensForSale > _individualMinimumAmount,
-        //            "Tokens for Sale should be > Individual Minimum Amount"
-        //        );
-        //
-        //        require(
-        //            _individualMaximumAmount >= _individualMinimumAmount,
-        //            "Individual Maximim AMount should be > Individual Minimum Amount"
-        //        );
-        //
+        require(_tokenPrice > 0, "Price token of project should be > 0");
+
+        require(_tokensForSale > 0, "Tokens for Sale should be > 0");
+
+        require(
+            _tokensForSale > _individualMinimumAmount,
+            "Tokens for Sale should be > Individual Minimum Amount"
+        );
+
+        require(
+            _individualMaximumAmount >= _individualMinimumAmount,
+            "Individual Maximim AMount should be > Individual Minimum Amount"
+        );
+
         //        startDate = _startDate;
         //        endDate = _endDate;
-        //        tokensForSale = _tokensForSale;
+        tokensForSale = _tokensForSale;
         tokenPrice = _tokenPrice;
+        individualMinimumAmount = _individualMinimumAmount;
+        individualMaximumAmount = _individualMaximumAmount;
 
         tokenAddress = ERC20(_tokenAddress);
         bUSDAddress = ERC20(_bUSDAddress);
@@ -104,20 +107,6 @@ contract LaunchPad is Pausable, Whitelist {
         return tokensForSale - tokensAllocated;
     }
 
-    function isBuyerHasPermissionBuy(address buyer) external view returns (bool) {
-        return rirAddress.balanceOf(buyer) > 0;
-    }
-
-    function checkBuyerCanBuy(address buyer) external view returns (bool){
-        uint256 rirAmount = rirAddress.balanceOf(buyer);
-        uint256 busdAmount = bUSDAddress.balanceOf(buyer);
-        bool canBuyToken = rirAmount.mul(rate) <= busdAmount;
-        bool hasRir = rirAmount > 0;
-        bool hasBusd = busdAmount > 0;
-        return canBuyToken && hasRir && hasBusd;
-    }
-
-
     function addOrdersImport(address[] calldata _buyer, uint256[] calldata _amountBUSD) external onlyOwner {
         for (uint256 i = 0; i < _buyer.length; i++) {
             uint256 _amountToken = _amountBUSD[i].div(tokenPrice).mul(1e18);
@@ -130,36 +119,26 @@ contract LaunchPad is Pausable, Whitelist {
         return ordersImport[_buyer];
     }
 
-    function createOrder(uint256 _amount) external {
-        /* Confirm Amount is positive */
-        require(_amount > 0, "Amount has to be positive");
-
-        if (this.isBuyerHasPermissionBuy(msg.sender)) {
-            createOrderByPassWhiteList(_amount);
-        } else {
-            createOrderNormal(_amount);
-        }
+    function isBuyerHasRIR(address buyer) external view returns (bool) {
+        return rirAddress.balanceOf(buyer) > 0;
     }
 
-    function createOrderNormal(uint256 _amount) internal onlyWhitelisted {
 
+    function createOrder(uint256 _amount_rir, uint256 _amount_busd) payable external {
+
+        require(_amount_rir > 0, "Amount has to be positive");
+
+        require(_amount_busd > 0, "Amount has to be positive");
+
+        require(rirAddress.balanceOf(msg.sender) >= _amount_rir, "You dont have enough RIR Token");
+
+        require(bUSDAddress.balanceOf(msg.sender) >= _amount_busd, "You dont have enough RIR Token");
+
+
+        uint256 _amountToken = _amount_busd.div(tokenPrice).mul(1e18);
+
+        Order memory _orderImport = Order(_amount_rir, _amountBUSD[i], _amountToken, StatusOrder.PENDING);
     }
-
-    function createOrderByPassWhiteList(uint256 _amount) internal {
-
-        uint256 rirAmount = _amount.div(rate);
-
-        uint256 busdAmount = _amount;
-
-        require(this.checkBuyerCanBuy(msg.sender), "You are not enough RIR Token and BUSD Token");
-
-        require(rirAmount <= rirAddress.balanceOf(msg.sender), "You are not enough RIR Token");
-
-        require(busdAmount <= bUSDAddress.balanceOf(msg.sender), "You are not enough BUSD Token");
-
-        
-    }
-
 
     //    /* Admin withdraw */
     //    function withdrawFunds() external onlyOwner {

@@ -105,7 +105,7 @@ describe("LaunchPad", async function () {
             expect(utils.formatEther(addr1_BusdAmount)).to.equal("1000.0");
 
             await rirContract.connect(addr1).approve(launchPadContract.address, constants.MaxUint256);
-            launchPadContract.connect(addr1).createOrder(utils.parseEther("100"));
+            launchPadContract.connect(addr1).createOrder(utils.parseEther("1000"));
         });
 
         // it('Buyer - Dont Has RIR', async function () {

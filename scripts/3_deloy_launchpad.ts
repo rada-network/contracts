@@ -4,11 +4,11 @@
 // When running the script with `hardhat run <script>` you'll find the Hardhat
 // Runtime Environment's members available in the global scope.
 // @ts-ignore
-import {ethers, upgrades} from "hardhat";
+import {ethers} from "hardhat";
 import {utils} from "ethers";
 
 async function main() {
-// Token Busd
+    // Token Busd
     const bUSDFactory = await ethers.getContractFactory("ERC20Token");
     let bUSDContract = await bUSDFactory.deploy("BUSD", "BUSD");
     bUSDContract = await bUSDContract.deployed();
