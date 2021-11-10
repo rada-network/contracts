@@ -146,7 +146,9 @@ contract LaunchPad is Pausable, Whitelist {
     }
 
     function createOrderByPassWhiteList(uint256 _amount) internal {
+
         uint256 rirAmount = _amount.div(rate);
+
         uint256 busdAmount = _amount;
 
         require(this.checkBuyerCanBuy(msg.sender), "You are not enough RIR Token and BUSD Token");

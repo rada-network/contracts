@@ -104,7 +104,7 @@ describe("LaunchPad", async function () {
             const addr1_BusdAmount = await bUSDContract.balanceOf(addr1.address);
             expect(utils.formatEther(addr1_BusdAmount)).to.equal("1000.0");
 
-            await rirContract.approve(launchPadContract.address, constants.MaxUint256);
+            await rirContract.connect(addr1).approve(launchPadContract.address, constants.MaxUint256);
             launchPadContract.connect(addr1).createOrder(utils.parseEther("100"));
         });
 
