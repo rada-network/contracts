@@ -41,12 +41,31 @@ describe("LaunchPad", async function () {
         // console.log('RIR Contract: ', rirAddress);
 
         const launchPadFactory = await ethers.getContractFactory("LaunchPad");
-        launchPadContract = await launchPadFactory.deploy(tokenAddress, busdAddress, rirAddress, utils.parseEther("0.01"), true);
+        const paramLaunchpad = {
+            _tokenAddress: tokenAddress,
+            _bUSDAddress: busdAddress,
+            _rirAddress: rirAddress,
+            _tokenPrice: utils.parseEther("0.01"),
+            _tokensForSale: utils.parseEther("1000000"),
+            _individualMinimumAmount: utils.parseEther("100"),
+            _individualMaximumAmount: utils.parseEther("1000"),
+            _hasWhitelisting: true,
+        };
+        launchPadContract = await launchPadFactory.deploy(
+            paramLaunchpad._tokenAddress,
+            paramLaunchpad._bUSDAddress,
+            paramLaunchpad._rirAddress,
+            paramLaunchpad._tokenPrice,
+            paramLaunchpad._tokensForSale,
+            paramLaunchpad._individualMinimumAmount,
+            paramLaunchpad._individualMaximumAmount,
+            paramLaunchpad._hasWhitelisting
+        );
         launchPadContract = await launchPadContract.deployed();
         const launchPadAddress = launchPadContract.address;
         // console.log('LaunchPad Contract: ', launchPadAddress);
 
-        // Send token to launchPad
+        // Mint token of project to launchPad
         await tokenContract.mint(launchPadAddress, utils.parseEther("1000000"));
         const launchPadTokenAmount = await tokenContract.balanceOf(launchPadAddress);
         expect(utils.formatEther(launchPadTokenAmount)).to.equal("1000000.0");
@@ -58,14 +77,14 @@ describe("LaunchPad", async function () {
             await rirContract.mint(owner.address, utils.parseEther("1000"))
             const amountOwner = await rirContract.balanceOf(owner.address);
             expect(utils.formatEther(amountOwner)).to.equal("1000.0");
-            const canBuy = await launchPadContract.isBuyerHasPermissionBuy(owner.address)
+            const canBuy = await launchPadContract.isBuyerHasRIR(owner.address)
             expect(canBuy).to.equal(true);
         });
 
         it('Buyer Has Not Permission Buy Token', async function () {
             const amountOwner = await rirContract.balanceOf(owner.address);
             expect(utils.formatEther(amountOwner)).to.equal("0.0");
-            const canBuy = await launchPadContract.isBuyerHasPermissionBuy(owner.address)
+            const canBuy = await launchPadContract.isBuyerHasRIR(owner.address)
             expect(canBuy).to.equal(false);
         });
 
@@ -105,7 +124,8 @@ describe("LaunchPad", async function () {
             expect(utils.formatEther(addr1_BusdAmount)).to.equal("1000.0");
 
             await rirContract.connect(addr1).approve(launchPadContract.address, constants.MaxUint256);
-            launchPadContract.connect(addr1).createOrder(utils.parseEther("1000"));
+            await bUSDContract.connect(addr1).approve(launchPadContract.address, constants.MaxUint256);
+            launchPadContract.connect(addr1).createOrder(utils.parseEther("1"),utils.parseEther("1000"));
         });
 
         // it('Buyer - Dont Has RIR', async function () {

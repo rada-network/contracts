@@ -134,10 +134,14 @@ contract LaunchPad is Pausable, Whitelist {
 
         require(bUSDAddress.balanceOf(msg.sender) >= _amount_busd, "You dont have enough RIR Token");
 
-
         uint256 _amountToken = _amount_busd.div(tokenPrice).mul(1e18);
 
-        Order memory _orderImport = Order(_amount_rir, _amountBUSD[i], _amountToken, StatusOrder.PENDING);
+        require(
+            _amountToken <= tokensLeft(),
+            "Amount is less than tokens available"
+        );
+
+        Order memory _orderImport = Order(_amount_rir, _amount_busd, _amountToken, StatusOrder.PENDING);
     }
 
     //    /* Admin withdraw */
