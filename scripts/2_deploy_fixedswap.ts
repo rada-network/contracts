@@ -1,8 +1,9 @@
-const { expect } = require('chai')
-const { BigNumber } = require('ethers')
+// @ts-ignore
+import {ethers} from "hardhat"
+import {utils} from "ethers"
 
-const _tradeValue = BigNumber.from(40000000000).toString();
-const _tokensForSale = BigNumber.from(3500000000).mul(1000000000).mul(1000000000).toString();
+const _tradeValue = utils.formatEther("40000000000");
+const _tokensForSale = utils.formatEther("3500000000");
 
 /*
 GMT: Wednesday, June 23, 2021 1:00:00 AM
@@ -16,10 +17,10 @@ Your time zone: Thursday, July 1, 2021 8:00:00 AM GMT+07:00
 */
 const _endDate = '1659277323' // https://www.epochconverter.com/
 
-const _individualMinimumAmount = BigNumber.from(10000000).mul(1000000000).mul(1000000000).toString();
-const _individualMaximumAmount = BigNumber.from(200000000).mul(1000000000).mul(1000000000).toString();
+const _individualMinimumAmount = utils.formatEther("10000000");
+const _individualMaximumAmount = utils.formatEther("200000000");
 const _isTokenSwapAtomic = false
-const _minimumRaise = BigNumber.from(3500000000).mul(1000000000).mul(1000000000).toString();
+const _minimumRaise = utils.formatEther("3500000000");
 const _feeAmount = '1'
 const _hasWhitelisting = false
 let addressToken = '0x84Be2E42e970A9815424619317bc249893d45ef7'
