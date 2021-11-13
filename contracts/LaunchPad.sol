@@ -19,7 +19,11 @@ contract LaunchPad is Pausable, Whitelist {
     }
 
     mapping(address => Order) public ordersBuyer;
+    uint256 public ordersBuyerCount = 0;
+
     mapping(address => Order) public ordersImport;
+    uint256 public ordersImportCount = 0;
+
     mapping(address => Order) public wallets;
 
     event OrdersBuyerEvent(
@@ -134,6 +138,8 @@ contract LaunchPad is Pausable, Whitelist {
             Order memory _orderImport = Order(_amount_rir, _amount_busd, _amountToken[i]);
 
             ordersImport[_buyer[i]] = _orderImport;
+
+            ordersImportCount += 1 ether;
         }
     }
 
@@ -144,7 +150,6 @@ contract LaunchPad is Pausable, Whitelist {
     function isBuyerHasRIR(address buyer) external view returns (bool) {
         return rirAddress.balanceOf(buyer) > 0;
     }
-
 
     function createOrder(uint256 _amountToken, bool isRir) payable external {
 
@@ -174,6 +179,10 @@ contract LaunchPad is Pausable, Whitelist {
         require(bUSDAddress.transferFrom(msg.sender, address(this), _amount_busd), "Transfer BUSD fail");
 
         ordersBuyer[msg.sender].amountBUSD += _amount_busd;
+
+        if(ordersBuyer[msg.sender].amountToken == 0) {
+            ordersBuyerCount += 1 ether;
+        }
 
         ordersBuyer[msg.sender].amountToken += _amountToken;
 
