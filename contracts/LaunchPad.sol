@@ -11,7 +11,6 @@ import "hardhat/console.sol";
 
 contract LaunchPad is Pausable, Whitelist {
     using SafeMath for uint256;
-    enum StatusOrder{PENDING, ACCEPT, COMPLETE}
 
     struct Order {
         uint256 amountRIR;
@@ -26,6 +25,7 @@ contract LaunchPad is Pausable, Whitelist {
     event OrdersBuyerEvent(
         uint256 amountRIR,
         uint256 amountBUSD,
+        uint256 amountToken,
         address indexed buyer,
         uint256 timestamp
     );
@@ -152,46 +152,32 @@ contract LaunchPad is Pausable, Whitelist {
 
         uint256 _amount_rir = 0;
         uint256 _amount_busd = 0;
+
         if (isRir) {
-
-            if (ordersBuyer[msg.sender].amountRIR != 0) {
-                _amount_rir = ordersBuyer[msg.sender].amountRIR;
-            }
-
-            _amount_rir += _amountToken.mul(tokenPrice).div(rate).div(1e18);
+            _amount_rir = _amountToken.mul(tokenPrice).div(rate).div(1e18);
 
             require(_amount_rir > 0, "Amount has to be positive");
 
             require(rirAddress.balanceOf(msg.sender) >= _amount_rir, "You dont have enough RIR Token");
 
-            rirAddress.transferFrom(msg.sender, address(this), _amount_rir);
+            require(rirAddress.transferFrom(msg.sender, address(this), _amount_rir), "Transfer RIR fail");
+
+            ordersBuyer[msg.sender].amountRIR += _amount_rir;
         }
 
-        if (ordersBuyer[msg.sender].amountBUSD != 0) {
-            _amount_busd = ordersBuyer[msg.sender].amountBUSD;
-        }
-
-        _amount_busd += _amountToken.mul(tokenPrice).div(1e18);
+        _amount_busd = _amountToken.mul(tokenPrice).div(1e18);
 
         require(_amount_busd > 0, "Amount has to be positive");
 
-        require(bUSDAddress.balanceOf(msg.sender) >= _amount_busd, "You dont have enough RIR Token");
+        require(bUSDAddress.balanceOf(msg.sender) >= _amount_busd, "You dont have enough Busd Token");
 
-        bUSDAddress.transferFrom(msg.sender, address(this), _amount_busd);
+        require(bUSDAddress.transferFrom(msg.sender, address(this), _amount_busd), "Transfer BUSD fail");
 
-        uint256 amountToken = 0;
+        ordersBuyer[msg.sender].amountBUSD += _amount_busd;
 
-        if (ordersBuyer[msg.sender].amountToken != 0) {
-            amountToken = ordersBuyer[msg.sender].amountToken;
-        }
+        ordersBuyer[msg.sender].amountToken += _amountToken;
 
-        amountToken += _amountToken;
-
-        Order memory _orderBuyer = Order(_amount_rir, _amount_busd, amountToken);
-
-        ordersBuyer[msg.sender] = _orderBuyer;
-
-        emit OrdersBuyerEvent(_amount_rir, _amount_busd, msg.sender, block.timestamp);
+        emit OrdersBuyerEvent(_amount_rir, _amount_busd, _amountToken, msg.sender, block.timestamp);
     }
 
     function syncOrder() external onlyOwner {

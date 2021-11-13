@@ -128,17 +128,45 @@ describe("LaunchPad", async function () {
     describe("Create order", () => {
 
         it('Buyer - Has RIR', async function () {
-            await rirContract.mint(addr1.address, utils.parseEther("1"));
-            const addr1_RIRAmount = await rirContract.balanceOf(addr1.address);
-            expect(utils.formatEther(addr1_RIRAmount)).to.equal("1.0");
+            await rirContract.mint(addr1.address, utils.parseEther("10"));
+            let addr1_RIRAmount = await rirContract.balanceOf(addr1.address);
+            expect(utils.formatEther(addr1_RIRAmount)).to.equal("10.0");
 
             await bUSDContract.mint(addr1.address, utils.parseEther("1000"));
-            const addr1_BusdAmount = await bUSDContract.balanceOf(addr1.address);
+            let addr1_BusdAmount = await bUSDContract.balanceOf(addr1.address);
             expect(utils.formatEther(addr1_BusdAmount)).to.equal("1000.0");
+
+            let addr1_tokenAmount = await tokenContract.balanceOf(addr1.address);
+            expect(utils.formatEther(addr1_tokenAmount)).to.equal("0.0");
 
             await rirContract.connect(addr1).approve(launchPadContract.address, constants.MaxUint256);
             await bUSDContract.connect(addr1).approve(launchPadContract.address, constants.MaxUint256);
-            launchPadContract.connect(addr1).createOrder(utils.parseEther("1"), true);
+            launchPadContract.connect(addr1).createOrder(utils.parseEther("100"), true);
+
+            let orderBuyer = await launchPadContract.connect(addr1).getOrdersBuyer(addr1.address);
+            expect(utils.formatEther(orderBuyer[0])).to.equal("1.0","Order RIR amount - Address 1");
+            expect(utils.formatEther(orderBuyer[1])).to.equal("100.0","Order Busd amount - Address 1");
+            expect(utils.formatEther(orderBuyer[2])).to.equal("100.0","Order Token amount - Address 1");
+            addr1_BusdAmount = await bUSDContract.balanceOf(addr1.address);
+            addr1_RIRAmount = await rirContract.balanceOf(addr1.address);
+            addr1_tokenAmount = await tokenContract.balanceOf(addr1.address);
+
+            expect(utils.formatEther(addr1_BusdAmount)).to.equal("900.0");
+            expect(utils.formatEther(addr1_RIRAmount)).to.equal("9.0");
+            expect(utils.formatEther(addr1_tokenAmount)).to.equal("0.0");
+
+            launchPadContract.connect(addr1).createOrder(utils.parseEther("100"), true);
+            orderBuyer = await launchPadContract.connect(addr1).getOrdersBuyer(addr1.address);
+            expect(utils.formatEther(orderBuyer[0])).to.equal("2.0","Order RIR amount - Address 1");
+            expect(utils.formatEther(orderBuyer[1])).to.equal("200.0","Order Busd amount - Address 1");
+            expect(utils.formatEther(orderBuyer[2])).to.equal("200.0","Order Token amount - Address 1");
+
+            addr1_BusdAmount = await bUSDContract.balanceOf(addr1.address);
+            addr1_RIRAmount = await rirContract.balanceOf(addr1.address);
+            addr1_tokenAmount = await tokenContract.balanceOf(addr1.address);
+            expect(utils.formatEther(addr1_BusdAmount)).to.equal("800.0");
+            expect(utils.formatEther(addr1_RIRAmount)).to.equal("8.0");
+            expect(utils.formatEther(addr1_tokenAmount)).to.equal("0.0");
         });
 
         // it('Buyer - Dont Has RIR', async function () {
