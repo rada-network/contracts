@@ -20,11 +20,14 @@ contract LaunchPad is Pausable, Whitelist {
 
     mapping(address => Order) public ordersBuyer;
     uint256 public ordersBuyerCount = 0;
+    address[] public buyers;
 
     mapping(address => Order) public ordersImport;
     uint256 public ordersImportCount = 0;
+    address[] public buyersImport;
 
     mapping(address => Order) public wallets;
+    address[] public buyersWallets;
 
     event OrdersBuyerEvent(
         uint256 amountRIR,
@@ -117,7 +120,7 @@ contract LaunchPad is Pausable, Whitelist {
 
         for (uint256 i = 0; i < _buyer.length; i++) {
 
-            require(ordersImport[_buyer[i]].amountToken == 0, 'Address Buyer already exist');
+            require(!isOrderInData(_buyer[i], buyersImport), 'Address Buyer already exist');
 
             require(_amountToken[i] > 0, "Amount has to be positive");
 
@@ -139,12 +142,18 @@ contract LaunchPad is Pausable, Whitelist {
 
             ordersImport[_buyer[i]] = _orderImport;
 
+            buyersImport.push(_buyer[i]);
+
             ordersImportCount += 1 ether;
         }
     }
 
     function getOrderImport(address _buyer) external onlyOwner view returns (Order memory) {
         return ordersImport[_buyer];
+    }
+
+    function getBuyersWallets() public view returns (address[] memory) {
+        return buyersWallets;
     }
 
     function isBuyerHasRIR(address buyer) external view returns (bool) {
@@ -180,7 +189,8 @@ contract LaunchPad is Pausable, Whitelist {
 
         ordersBuyer[msg.sender].amountBUSD += _amount_busd;
 
-        if(ordersBuyer[msg.sender].amountToken == 0) {
+        if (!isOrderInData(msg.sender, buyers)) {
+            buyers.push(msg.sender);
             ordersBuyerCount += 1 ether;
         }
 
@@ -189,10 +199,40 @@ contract LaunchPad is Pausable, Whitelist {
         emit OrdersBuyerEvent(_amount_rir, _amount_busd, _amountToken, msg.sender, block.timestamp);
     }
 
+    function isOrderInData(address _addr_buyer, address[] memory data) internal view returns (bool) {
+        uint i;
+        while (i < data.length) {
+            if (_addr_buyer == data[i]) {
+                return true;
+            }
+            i++;
+        }
+        return false;
+    }
+
     function syncOrder() external onlyOwner {
-        //        for()
-        //        mapping(address => Order) public ordersImport;
-        //        mapping(address => Order) public wallets;
+        uint i;
+        while (i < buyers.length) {
+            address addrBuyer = buyers[i];
+
+            buyersWallets.push(addrBuyer);
+
+            if (isOrderInData(addrBuyer, buyersImport)) {
+                require(ordersBuyer[addrBuyer].amountBUSD >= ordersImport[addrBuyer].amountBUSD);
+                require(ordersBuyer[addrBuyer].amountRIR >= ordersImport[addrBuyer].amountRIR);
+                require(ordersBuyer[addrBuyer].amountToken >= ordersImport[addrBuyer].amountToken);
+
+                wallets[addrBuyer].amountRIR = ordersBuyer[addrBuyer].amountRIR - ordersImport[addrBuyer].amountRIR;
+                wallets[addrBuyer].amountBUSD = ordersBuyer[addrBuyer].amountBUSD - ordersImport[addrBuyer].amountBUSD;
+                wallets[addrBuyer].amountToken = ordersImport[addrBuyer].amountToken;
+
+                tokensAllocated += wallets[addrBuyer].amountToken;
+            } else {
+                wallets[addrBuyer] = ordersBuyer[addrBuyer];
+                wallets[addrBuyer].amountToken = 0;
+            }
+            i++;
+        }
     }
 
     /* Admin withdraw */
