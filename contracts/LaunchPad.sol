@@ -235,6 +235,17 @@ contract LaunchPad is Pausable, Whitelist {
         }
     }
 
+    // Claim Token from Wallet Contract
+    function claimToken() external {
+        uint256 balanceBusd = wallets[msg.sender].amountBUSD;
+        uint256 balanceRIR = wallets[msg.sender].amountRIR;
+        uint256 balanceToken = wallets[msg.sender].amountToken;
+        require(bUSDAddress.transferFrom(address(this), msg.sender, balanceBusd));
+        require(rirAddress.transferFrom(address(this), msg.sender, balanceRIR));
+        require(tokenAddress.transferFrom(address(this), msg.sender, balanceToken));
+        delete wallets[msg.sender];
+    }
+
     /* Admin withdraw */
     function withdrawBusdFunds() external onlyOwner {
         uint256 balanceBusd = bUSDAddress.balanceOf(address(this));
