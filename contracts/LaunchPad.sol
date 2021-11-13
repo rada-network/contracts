@@ -13,22 +13,23 @@ contract LaunchPad is Pausable, Whitelist {
     using SafeMath for uint256;
     enum StatusOrder{PENDING, ACCEPT, COMPLETE}
 
-    struct Wallet {
-        uint256 amountRIR;
-        uint256 amountBUSD;
-        uint256 amountToken;
-    }
-
     struct Order {
         uint256 amountRIR;
         uint256 amountBUSD;
         uint256 amountToken;
-        StatusOrder status;
     }
 
-    mapping(address => Order) public orders;
+    mapping(address => Order) public ordersBuyer;
     mapping(address => Order) public ordersImport;
-    mapping(address => Wallet) public wallets;
+    mapping(address => Order) public wallets;
+
+    event OrdersBuyerEvent(
+        uint256 amountRIR,
+        uint256 amountBUSD,
+        address indexed buyer,
+        uint256 timestamp
+    );
+
 
     uint256 public startDate; /* Start Date  - https://www.epochconverter.com/ */
     uint256 public endDate; /* End Date  */
@@ -38,6 +39,8 @@ contract LaunchPad is Pausable, Whitelist {
     uint256 public tokensAllocated = 0; /* Tokens Allocated */
     uint256 public tokensForSale = 0; /* Tokens for Sale */
     uint256 public rate = 100; /* 1 RIR = 100 BUSD */
+    bool public unsoldTokensReedemed = false;
+    address public ADDRESS_WITHDRAW = 0x128392d27439F0E76b3612E9B94f5E9C072d74e0;
 
     ERC20 public tokenAddress;
     ERC20 public bUSDAddress;
@@ -93,13 +96,12 @@ contract LaunchPad is Pausable, Whitelist {
         rirAddress = ERC20(_rirAddress);
     }
 
-    function getOrder(address _buyer) external view returns (uint256, uint256, uint256, StatusOrder) {
-        Order memory _order = orders[_buyer];
+    function getOrdersBuyer(address _buyer) external view returns (uint256, uint256, uint256) {
+        Order memory _order = ordersBuyer[_buyer];
         return (
         _order.amountRIR,
         _order.amountBUSD,
-        _order.amountToken,
-        _order.status
+        _order.amountToken
         );
     }
 
@@ -107,10 +109,30 @@ contract LaunchPad is Pausable, Whitelist {
         return tokensForSale - tokensAllocated;
     }
 
-    function addOrdersImport(address[] calldata _buyer, uint256[] calldata _amountBUSD) external onlyOwner {
+    function addOrdersImport(address[] calldata _buyer, uint256[] calldata _amountToken, bool[] calldata isRir) external onlyOwner {
+
         for (uint256 i = 0; i < _buyer.length; i++) {
-            uint256 _amountToken = _amountBUSD[i].div(tokenPrice).mul(1e18);
-            Order memory _orderImport = Order(0, _amountBUSD[i], _amountToken, StatusOrder.PENDING);
+
+            require(ordersImport[_buyer[i]].amountToken == 0, 'Address Buyer already exist');
+
+            require(_amountToken[i] > 0, "Amount has to be positive");
+
+            uint256 _amount_rir = 0;
+            uint256 _amount_Token = 0;
+            uint256 _amount_busd = 0;
+
+            if (isRir[i]) {
+                _amount_rir = _amountToken[i].mul(tokenPrice).div(rate).div(1e18);
+
+                require(_amount_rir > 0, "Amount has to be positive");
+            }
+
+            _amount_busd = _amountToken[i].mul(tokenPrice).div(1e18);
+
+            require(_amount_busd > 0, "Amount has to be positive");
+
+            Order memory _orderImport = Order(_amount_rir, _amount_busd, _amountToken[i]);
+
             ordersImport[_buyer[i]] = _orderImport;
         }
     }
@@ -124,33 +146,77 @@ contract LaunchPad is Pausable, Whitelist {
     }
 
 
-    function createOrder(uint256 _amount_rir, uint256 _amount_busd) payable external {
+    function createOrder(uint256 _amountToken, bool isRir) payable external {
 
-        require(_amount_rir > 0, "Amount has to be positive");
+        require(_amountToken > 0, "Amount has to be positive");
+
+        uint256 _amount_rir = 0;
+        uint256 _amount_busd = 0;
+        if (isRir) {
+
+            if (ordersBuyer[_buyer[i]].amountRIR != 0) {
+                _amount_rir = ordersBuyer[_buyer[i]].amountRIR;
+            }
+
+            _amount_rir += _amountToken.mul(tokenPrice).div(rate).div(1e18);
+
+            require(_amount_rir > 0, "Amount has to be positive");
+
+            require(rirAddress.balanceOf(msg.sender) >= _amount_rir, "You dont have enough RIR Token");
+
+            rirAddress.transferFrom(msg.sender, address(this), _amount_rir);
+        }
+
+        if (ordersBuyer[_buyer[i]].amountBUSD != 0) {
+            _amount_busd = ordersBuyer[_buyer[i]].amountBUSD;
+        }
+
+        _amount_busd += _amountToken.mul(tokenPrice).div(1e18);
 
         require(_amount_busd > 0, "Amount has to be positive");
 
-        require(rirAddress.balanceOf(msg.sender) >= _amount_rir, "You dont have enough RIR Token");
-
         require(bUSDAddress.balanceOf(msg.sender) >= _amount_busd, "You dont have enough RIR Token");
 
-        uint256 _amountToken = _amount_busd.div(tokenPrice).mul(1e18);
+        bUSDAddress.transferFrom(msg.sender, address(this), _amount_busd);
 
-        require(
-            _amountToken <= tokensLeft(),
-            "Amount is less than tokens available"
-        );
+        uint256 amountToken = 0;
 
-        Order memory _orderImport = Order(_amount_rir, _amount_busd, _amountToken, StatusOrder.PENDING);
+        if (ordersBuyer[_buyer[i]].amountToken != 0) {
+            amountToken = ordersBuyer[_buyer[i]].amountToken;
+        }
+
+        amountToken += _amountToken;
+
+        Order memory _orderBuyer = Order(_amount_rir, _amount_busd, amountToken);
+
+        ordersBuyer[msg.sender] = _orderBuyer;
+
+        emit OrdersBuyerEvent(_amount_rir, _amount_busd, msg.sender, block.timestamp);
     }
 
-    //    /* Admin withdraw */
-    //    function withdrawFunds() external onlyOwner {
-    //
-    //    }
-    //
-    //    /* Admin withdraw unsold token */
-    //    function withdrawUnsoldTokens() external onlyOwner {
-    //
-    //    }
+    function syncOrder() external onlyOwner {
+        //        for()
+        //        mapping(address => Order) public ordersImport;
+        //        mapping(address => Order) public wallets;
+    }
+
+    /* Admin withdraw */
+    function withdrawBusdFunds() external onlyOwner {
+        uint256 balanceBusd = bUSDAddress.balanceOf(address(this));
+        bUSDAddress.transferFrom(msg.sender, ADDRESS_WITHDRAW, balanceBusd);
+    }
+
+    /* Admin withdraw unsold token */
+    function withdrawUnsoldTokens() external onlyOwner {
+        require(!unsoldTokensReedemed);
+        uint256 unsoldTokens;
+        unsoldTokens = tokensForSale.sub(tokensAllocated);
+        if (unsoldTokens > 0) {
+            unsoldTokensReedemed = true;
+            require(
+                tokenAddress.transferFrom(msg.sender, ADDRESS_WITHDRAW, unsoldTokens),
+                "ERC20 transfer failed"
+            );
+        }
+    }
 }

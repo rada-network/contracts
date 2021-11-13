@@ -15,9 +15,10 @@ describe("LaunchPad", async function () {
     let owner: any;
     let addr1: any;
     let addr2: any;
+    let addr3: any;
 
     beforeEach('Setup', async function () {
-        [owner, addr1, addr2] = await ethers.getSigners();
+        [owner, addr1, addr2, addr3] = await ethers.getSigners();
 
         // Token Busd
         const bUSDFactory = await ethers.getContractFactory("ERC20Token");
@@ -45,7 +46,7 @@ describe("LaunchPad", async function () {
             _tokenAddress: tokenAddress,
             _bUSDAddress: busdAddress,
             _rirAddress: rirAddress,
-            _tokenPrice: utils.parseEther("0.01"),
+            _tokenPrice: utils.parseEther("1"),
             _tokensForSale: utils.parseEther("1000000"),
             _individualMinimumAmount: utils.parseEther("100"),
             _individualMaximumAmount: utils.parseEther("1000"),
@@ -92,24 +93,36 @@ describe("LaunchPad", async function () {
 
     describe("Import Orders", () => {
 
-        it('Add Import Orders', async function () {
-            const ordersImport = await launchPadContract.addOrdersImport(
-                [owner.address, addr1.address, addr2.address],
-                [utils.parseEther("1000"), utils.parseEther("2000"), utils.parseEther("3000")]
+        it('Add Import Orders - OK', async function () {
+            await launchPadContract.addOrdersImport(
+                [owner.address, addr1.address, addr2.address, addr3.address],
+                [utils.parseEther("1000"), utils.parseEther("2000"), utils.parseEther("3000"),utils.parseEther("2000")],
+                [true, true, false, true]
             );
             const orderOwner = await launchPadContract.getOrderImport(owner.address);
-            expect(utils.formatEther(orderOwner.amountRIR)).to.equal("0.0");
+            expect(utils.formatEther(orderOwner.amountRIR)).to.equal("10.0");
             expect(utils.formatEther(orderOwner.amountBUSD)).to.equal("1000.0");
-            expect(utils.formatEther(orderOwner.amountToken)).to.equal("100000.0");
-            expect(orderOwner.status).to.equal(0);
+            expect(utils.formatEther(orderOwner.amountToken)).to.equal("1000.0");
 
             const orderAddr1 = await launchPadContract.getOrderImport(addr1.address);
-            expect(utils.formatEther(orderAddr1.amountRIR)).to.equal("0.0");
+            expect(utils.formatEther(orderAddr1.amountRIR)).to.equal("20.0");
             expect(utils.formatEther(orderAddr1.amountBUSD)).to.equal("2000.0");
-            expect(utils.formatEther(orderAddr1.amountToken)).to.equal("200000.0");
-            expect(orderAddr1.status).to.equal(0);
+            expect(utils.formatEther(orderAddr1.amountToken)).to.equal("2000.0");
+
+            const orderAddr2 = await launchPadContract.getOrderImport(addr2.address);
+            expect(utils.formatEther(orderAddr2.amountRIR)).to.equal("0.0");
+            expect(utils.formatEther(orderAddr2.amountBUSD)).to.equal("3000.0");
+            expect(utils.formatEther(orderAddr2.amountToken)).to.equal("3000.0");
         });
 
+        it('Add Import Orders - Error', async function () {
+            const orderImport = launchPadContract.addOrdersImport(
+                [owner.address, addr1.address, addr1.address, addr2.address],
+                [utils.parseEther("1000"), utils.parseEther("2000"), utils.parseEther("3000"),utils.parseEther("2000")],
+                [true, true, false, true]
+            );
+            await expect(orderImport).to.revertedWith("Address Buyer already exist");
+        });
     });
 
     describe("Create order", () => {
@@ -125,7 +138,7 @@ describe("LaunchPad", async function () {
 
             await rirContract.connect(addr1).approve(launchPadContract.address, constants.MaxUint256);
             await bUSDContract.connect(addr1).approve(launchPadContract.address, constants.MaxUint256);
-            launchPadContract.connect(addr1).createOrder(utils.parseEther("1"),utils.parseEther("1000"));
+            launchPadContract.connect(addr1).createOrder(utils.parseEther("1"), true);
         });
 
         // it('Buyer - Dont Has RIR', async function () {
