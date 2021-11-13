@@ -154,8 +154,8 @@ contract LaunchPad is Pausable, Whitelist {
         uint256 _amount_busd = 0;
         if (isRir) {
 
-            if (ordersBuyer[_buyer[i]].amountRIR != 0) {
-                _amount_rir = ordersBuyer[_buyer[i]].amountRIR;
+            if (ordersBuyer[msg.sender].amountRIR != 0) {
+                _amount_rir = ordersBuyer[msg.sender].amountRIR;
             }
 
             _amount_rir += _amountToken.mul(tokenPrice).div(rate).div(1e18);
@@ -167,8 +167,8 @@ contract LaunchPad is Pausable, Whitelist {
             rirAddress.transferFrom(msg.sender, address(this), _amount_rir);
         }
 
-        if (ordersBuyer[_buyer[i]].amountBUSD != 0) {
-            _amount_busd = ordersBuyer[_buyer[i]].amountBUSD;
+        if (ordersBuyer[msg.sender].amountBUSD != 0) {
+            _amount_busd = ordersBuyer[msg.sender].amountBUSD;
         }
 
         _amount_busd += _amountToken.mul(tokenPrice).div(1e18);
@@ -181,8 +181,8 @@ contract LaunchPad is Pausable, Whitelist {
 
         uint256 amountToken = 0;
 
-        if (ordersBuyer[_buyer[i]].amountToken != 0) {
-            amountToken = ordersBuyer[_buyer[i]].amountToken;
+        if (ordersBuyer[msg.sender].amountToken != 0) {
+            amountToken = ordersBuyer[msg.sender].amountToken;
         }
 
         amountToken += _amountToken;
