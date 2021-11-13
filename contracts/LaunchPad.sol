@@ -240,9 +240,9 @@ contract LaunchPad is Pausable, Whitelist {
         uint256 balanceBusd = wallets[msg.sender].amountBUSD;
         uint256 balanceRIR = wallets[msg.sender].amountRIR;
         uint256 balanceToken = wallets[msg.sender].amountToken;
-        require(bUSDAddress.transferFrom(address(this), msg.sender, balanceBusd));
-        require(rirAddress.transferFrom(address(this), msg.sender, balanceRIR));
-        require(tokenAddress.transferFrom(address(this), msg.sender, balanceToken));
+        require(bUSDAddress.transfer(msg.sender, balanceBusd), "ERC20 transfer failed");
+        require(rirAddress.transfer(msg.sender, balanceRIR), "ERC20 transfer failed");
+        require(tokenAddress.transfer(msg.sender, balanceToken), "ERC20 transfer failed");
         delete wallets[msg.sender];
     }
 
