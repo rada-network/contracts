@@ -268,7 +268,20 @@ contract LaunchPad is Pausable, Whitelist {
         }
     }
 
-    function fund() public onlyOwner {
+    function fund() external onlyOwner {
         isSaleFunded = true;
     }
+
+    function availableTokens() external view returns (uint256) {
+        return tokenAddress.balanceOf(address(this));
+    }
+
+    function availableBusd() external view returns (uint256) {
+        return bUSDAddress.balanceOf(address(this));
+    }
+
+    function availableRIR() external view returns (uint256) {
+        return rirAddress.balanceOf(address(this));
+    }
+
 }
