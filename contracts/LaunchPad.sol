@@ -32,7 +32,6 @@ contract LaunchPad is Pausable, Whitelist {
     event OrdersBuyerEvent(
         uint256 amountRIR,
         uint256 amountBUSD,
-        uint256 amountToken,
         address indexed buyer,
         uint256 timestamp
     );
@@ -197,7 +196,7 @@ contract LaunchPad is Pausable, Whitelist {
             ordersBuyerCount += 1 ether;
         }
 
-        emit OrdersBuyerEvent(_amountRIR, _amountBusd, 0, msg.sender, block.timestamp);
+        emit OrdersBuyerEvent(_amountRIR, _amountBusd, msg.sender, block.timestamp);
     }
 
     function isOrderInData(address _addr_buyer, address[] memory data) internal view returns (bool) {
@@ -265,7 +264,7 @@ contract LaunchPad is Pausable, Whitelist {
         if (unsoldTokens > 0) {
             unsoldTokensReedemed = true;
             require(
-                tokenAddress.transferFrom(msg.sender, ADDRESS_WITHDRAW, unsoldTokens),
+                tokenAddress.transfer(ADDRESS_WITHDRAW, unsoldTokens),
                 "ERC20 transfer failed"
             );
         }
@@ -287,4 +286,15 @@ contract LaunchPad is Pausable, Whitelist {
         return rirAddress.balanceOf(address(this));
     }
 
+    function removeOtherERC20Tokens(address _tokenAddress, address _to) external onlyOwner {
+        require(
+            _tokenAddress != address(erc20),
+            "Token Address has to be diff than the erc20 subject to sale"
+        ); // Confirm tokens addresses are different from main sale one
+        ERC20 erc20Token = ERC20(_tokenAddress);
+        require(
+            erc20Token.transfer(_to, erc20Token.balanceOf(address(this))),
+            "ERC20 Token transfer failed"
+        );
+    }
 }

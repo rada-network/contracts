@@ -273,7 +273,7 @@ describe("LaunchPad", async function () {
             await rirContract.connect(owner).approve(launchPadContract.address, constants.MaxUint256);
             await bUSDContract.connect(owner).approve(launchPadContract.address, constants.MaxUint256);
             await launchPadContract.connect(owner).createOrder(utils.parseEther("400"), true);
-            1000000000000000000
+
             await launchPadContract.addOrdersImport(
                 [owner.address],
                 [utils.parseEther("100")],
@@ -295,9 +295,22 @@ describe("LaunchPad", async function () {
             let buyersWallets = await launchPadContract.getBuyersWallets();
             expect(buyersWallets.length).to.equal(2);
 
+            await launchPadContract.fund();
             await launchPadContract.connect(addr1).claimToken();
             addr1_RIRAmount = await rirContract.balanceOf(addr1.address);
+            addr1_BusdAmount = await bUSDContract.balanceOf(addr1.address);
+            addr1_tokenAmount = await tokenContract.balanceOf(addr1.address);
             expect(utils.formatEther(addr1_RIRAmount)).to.equal("10.0");
+            expect(utils.formatEther(addr1_BusdAmount)).to.equal("1000.0");
+            expect(utils.formatEther(addr1_tokenAmount)).to.equal("0.0");
+
+            await launchPadContract.connect(owner).claimToken();
+            owner_RIRAmount = await rirContract.balanceOf(owner.address);
+            owner_BusdAmount = await bUSDContract.balanceOf(owner.address);
+            owner_tokenAmount = await tokenContract.balanceOf(owner.address);
+            expect(utils.formatEther(owner_RIRAmount)).to.equal("9.0");
+            expect(utils.formatEther(owner_BusdAmount)).to.equal("900.0");
+            expect(utils.formatEther(owner_tokenAmount)).to.equal("100.0");
         });
     })
 
