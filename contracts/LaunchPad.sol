@@ -49,8 +49,8 @@ contract LaunchPad is Pausable, Whitelist {
         address _rirAddress,
         uint256 _tokenPrice, // Price Token (Ex: 1 TOKEN = 0.01 BUSD)
         uint256 _tokensForSale,
-    //        uint256 _startDate,
-    //        uint256 _endDate,
+        uint256 _startDate,
+        uint256 _endDate,
         uint256 _individualMinimumAmount,
         uint256 _individualMaximumAmount,
         bool _hasWhitelisting
@@ -81,8 +81,8 @@ contract LaunchPad is Pausable, Whitelist {
             "Individual Maximim AMount should be > Individual Minimum Amount"
         );
 
-        //        startDate = _startDate;
-        //        endDate = _endDate;
+        startDate = _startDate;
+        endDate = _endDate;
         tokensForSale = _tokensForSale;
         tokenPrice = _tokenPrice;
         individualMinimumAmount = _individualMinimumAmount;
