@@ -108,16 +108,7 @@ contract LaunchPad is Pausable, Whitelist {
         rirAddress = ERC20(_rirAddress);
     }
 
-    function getOrdersBuyer(address _buyer) external view returns (uint256, uint256, uint256) {
-        Order memory _order = ordersBuyer[_buyer];
-        return (
-        _order.amountRIR,
-        _order.amountBUSD,
-        _order.amountToken
-        );
-    }
-
-    function tokensLeft() public view returns (uint256) {
+    function tokensLeft() external view returns (uint256) {
         return tokensForSale - tokensAllocated;
     }
 
@@ -153,16 +144,20 @@ contract LaunchPad is Pausable, Whitelist {
         }
     }
 
-    function getBuyers() public view returns (address[] memory) {
-        return buyers;
-    }
-
     function getOrderImport(address _buyer) external onlyOwner view returns (Order memory) {
         return ordersImport[_buyer];
     }
 
-    function getBuyersWallets() public view returns (address[] memory) {
+    function getOrdersBuyer(address _buyer) external view returns (Order memory) {
+        return ordersBuyer[_buyer];
+    }
+
+    function getBuyersWallets() external view returns (address[] memory) {
         return buyersWallets;
+    }
+
+    function getBuyers() external view returns (address[] memory) {
+        return buyers;
     }
 
     function isBuyerHasRIR(address buyer) external view returns (bool) {
