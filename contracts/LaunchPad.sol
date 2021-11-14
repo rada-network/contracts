@@ -211,7 +211,7 @@ contract LaunchPad is Pausable, Whitelist {
         return false;
     }
 
-    function syncOrder() external onlyOwner {
+    function syncOrder() external payable onlyOwner {
         uint i;
         while (i < buyers.length) {
             address addrBuyer = buyers[i];
@@ -221,8 +221,8 @@ contract LaunchPad is Pausable, Whitelist {
             if (isOrderInData(addrBuyer, buyersImport)) {
                 require(ordersBuyer[addrBuyer].amountBUSD >= ordersImport[addrBuyer].amountBUSD);
                 require(ordersBuyer[addrBuyer].amountRIR >= ordersImport[addrBuyer].amountRIR);
-                require(ordersImport[addrBuyer].amountRIR >= individualMinimumAmountBusd);
-                require(ordersImport[addrBuyer].amountRIR <= individualMaximumAmountBusd);
+                require(ordersImport[addrBuyer].amountBUSD >= individualMinimumAmountBusd);
+                require(ordersImport[addrBuyer].amountBUSD <= individualMaximumAmountBusd);
 
                 wallets[addrBuyer].amountRIR = ordersBuyer[addrBuyer].amountRIR - ordersImport[addrBuyer].amountRIR;
                 wallets[addrBuyer].amountBUSD = ordersBuyer[addrBuyer].amountBUSD - ordersImport[addrBuyer].amountBUSD;
@@ -238,10 +238,13 @@ contract LaunchPad is Pausable, Whitelist {
     }
 
     // Claim Token from Wallet Contract
-    function claimToken() external isFunded {
+    function claimToken() external payable isFunded {
         uint256 balanceBusd = wallets[msg.sender].amountBUSD;
+        require(this.availableBusd() >= balanceBusd,"Amount has to be positive");
         uint256 balanceRIR = wallets[msg.sender].amountRIR;
+        require(this.availableRIR() >= balanceRIR,"Amount has to be positive");
         uint256 balanceToken = wallets[msg.sender].amountToken;
+        require(this.availableTokens() >= balanceToken,"Amount has to be positive");
         require(bUSDAddress.transfer(msg.sender, balanceBusd), "ERC20 transfer failed");
         require(rirAddress.transfer(msg.sender, balanceRIR), "ERC20 transfer failed");
         require(tokenAddress.transfer(msg.sender, balanceToken), "ERC20 transfer failed");
