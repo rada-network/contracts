@@ -160,43 +160,36 @@ contract LaunchPad is Pausable, Whitelist {
         return rirAddress.balanceOf(buyer) > 0;
     }
 
-    function createOrder(uint256 _amountToken, bool isRir) payable external {
+    function createOrder(uint256 _amountBusd, bool isRir) payable external {
 
-        require(_amountToken > 0, "Amount has to be positive");
+        require(_amountBusd > 0, "Amount has to be positive");
 
-        uint256 _amount_rir = 0;
-        uint256 _amount_busd = 0;
+        uint256 _amountRIR = 0;
 
         if (isRir) {
-            _amount_rir = _amountToken.mul(tokenPrice).div(rate).div(1e18);
+            _amountRIR = _amountBusd.div(rate);
 
-            require(_amount_rir > 0, "Amount has to be positive");
+            require(_amountRIR > 0, "Amount has to be positive");
 
-            require(rirAddress.balanceOf(msg.sender) >= _amount_rir, "You dont have enough RIR Token");
+            require(rirAddress.balanceOf(msg.sender) >= _amountRIR, "You dont have enough RIR Token");
 
-            require(rirAddress.transferFrom(msg.sender, address(this), _amount_rir), "Transfer RIR fail");
+            require(rirAddress.transferFrom(msg.sender, address(this), _amountRIR), "Transfer RIR fail");
 
-            ordersBuyer[msg.sender].amountRIR += _amount_rir;
+            ordersBuyer[msg.sender].amountRIR += _amountRIR;
         }
 
-        _amount_busd = _amountToken.mul(tokenPrice).div(1e18);
+        require(bUSDAddress.balanceOf(msg.sender) >= _amountBusd, "You dont have enough Busd Token");
 
-        require(_amount_busd > 0, "Amount has to be positive");
+        require(bUSDAddress.transferFrom(msg.sender, address(this), _amountBusd), "Transfer BUSD fail");
 
-        require(bUSDAddress.balanceOf(msg.sender) >= _amount_busd, "You dont have enough Busd Token");
-
-        require(bUSDAddress.transferFrom(msg.sender, address(this), _amount_busd), "Transfer BUSD fail");
-
-        ordersBuyer[msg.sender].amountBUSD += _amount_busd;
+        ordersBuyer[msg.sender].amountBUSD += _amountBusd;
 
         if (!isOrderInData(msg.sender, buyers)) {
             buyers.push(msg.sender);
             ordersBuyerCount += 1 ether;
         }
 
-        ordersBuyer[msg.sender].amountToken += _amountToken;
-
-        emit OrdersBuyerEvent(_amount_rir, _amount_busd, _amountToken, msg.sender, block.timestamp);
+        emit OrdersBuyerEvent(_amountRIR, _amountBusd, 0, msg.sender, block.timestamp);
     }
 
     function isOrderInData(address _addr_buyer, address[] memory data) internal view returns (bool) {
@@ -220,7 +213,6 @@ contract LaunchPad is Pausable, Whitelist {
             if (isOrderInData(addrBuyer, buyersImport)) {
                 require(ordersBuyer[addrBuyer].amountBUSD >= ordersImport[addrBuyer].amountBUSD);
                 require(ordersBuyer[addrBuyer].amountRIR >= ordersImport[addrBuyer].amountRIR);
-                require(ordersBuyer[addrBuyer].amountToken >= ordersImport[addrBuyer].amountToken);
 
                 wallets[addrBuyer].amountRIR = ordersBuyer[addrBuyer].amountRIR - ordersImport[addrBuyer].amountRIR;
                 wallets[addrBuyer].amountBUSD = ordersBuyer[addrBuyer].amountBUSD - ordersImport[addrBuyer].amountBUSD;
