@@ -148,7 +148,7 @@ contract LaunchPad is Pausable, Whitelist {
         return ordersImport[_buyer];
     }
 
-    function getOrdersBuyer(address _buyer) external view returns (Order memory) {
+    function getOrderBuyer(address _buyer) external view returns (Order memory) {
         return ordersBuyer[_buyer];
     }
 
