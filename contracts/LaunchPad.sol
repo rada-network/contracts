@@ -32,16 +32,15 @@ contract LaunchPad is Pausable, Whitelist {
     event OrdersBuyerEvent(
         uint256 amountRIR,
         uint256 amountBUSD,
-        uint256 amountToken,
         address indexed buyer,
         uint256 timestamp
     );
 
-
+    bool public isSaleFunded = false;
     uint256 public startDate; /* Start Date  - https://www.epochconverter.com/ */
     uint256 public endDate; /* End Date  */
-    uint256 public individualMinimumAmount = 0; /* Minimum Amount Per Address */
-    uint256 public individualMaximumAmount = 0; /* Minimum Amount Per Address */
+    uint256 public individualMinimumAmountBusd = 0; /* Minimum Amount Per Address */
+    uint256 public individualMaximumAmountBusd = 0; /* Minimum Amount Per Address */
     uint256 public tokenPrice = 0; /* Gia token theo USD */
     uint256 public tokensAllocated = 0; /* Tokens Allocated */
     uint256 public tokensForSale = 0; /* Tokens for Sale */
@@ -53,16 +52,21 @@ contract LaunchPad is Pausable, Whitelist {
     ERC20 public bUSDAddress;
     ERC20 public rirAddress;
 
+    modifier isFunded() {
+        require(isSaleFunded, "Has to be funded");
+        _;
+    }
+
     constructor(
         address _tokenAddress,
         address _bUSDAddress,
         address _rirAddress,
         uint256 _tokenPrice, // Price Token (Ex: 1 TOKEN = 0.01 BUSD)
         uint256 _tokensForSale,
-        uint256 _startDate,
-        uint256 _endDate,
-        uint256 _individualMinimumAmount,
-        uint256 _individualMaximumAmount,
+    //        uint256 _startDate,
+    //        uint256 _endDate,
+        uint256 _individualMinimumAmountBusd,
+        uint256 _individualMaximumAmountBusd,
         bool _hasWhitelisting
     ) Whitelist(_hasWhitelisting) {
         //        require(
@@ -82,37 +86,28 @@ contract LaunchPad is Pausable, Whitelist {
         require(_tokensForSale > 0, "Tokens for Sale should be > 0");
 
         require(
-            _tokensForSale > _individualMinimumAmount,
+            _tokensForSale > _individualMinimumAmountBusd,
             "Tokens for Sale should be > Individual Minimum Amount"
         );
 
         require(
-            _individualMaximumAmount >= _individualMinimumAmount,
+            _individualMaximumAmountBusd >= _individualMinimumAmountBusd,
             "Individual Maximim AMount should be > Individual Minimum Amount"
         );
 
-        startDate = _startDate;
-        endDate = _endDate;
+        //startDate = _startDate;
+        //endDate = _endDate;
         tokensForSale = _tokensForSale;
         tokenPrice = _tokenPrice;
-        individualMinimumAmount = _individualMinimumAmount;
-        individualMaximumAmount = _individualMaximumAmount;
+        individualMinimumAmountBusd = _individualMinimumAmountBusd;
+        individualMaximumAmountBusd = _individualMaximumAmountBusd;
 
         tokenAddress = ERC20(_tokenAddress);
         bUSDAddress = ERC20(_bUSDAddress);
         rirAddress = ERC20(_rirAddress);
     }
 
-    function getOrdersBuyer(address _buyer) external view returns (uint256, uint256, uint256) {
-        Order memory _order = ordersBuyer[_buyer];
-        return (
-        _order.amountRIR,
-        _order.amountBUSD,
-        _order.amountToken
-        );
-    }
-
-    function tokensLeft() public view returns (uint256) {
+    function tokensLeft() external view returns (uint256) {
         return tokensForSale - tokensAllocated;
     }
 
@@ -152,8 +147,16 @@ contract LaunchPad is Pausable, Whitelist {
         return ordersImport[_buyer];
     }
 
-    function getBuyersWallets() public view returns (address[] memory) {
+    function getOrderBuyer(address _buyer) external view returns (Order memory) {
+        return ordersBuyer[_buyer];
+    }
+
+    function getBuyersWallets() external view returns (address[] memory) {
         return buyersWallets;
+    }
+
+    function getBuyers() external view returns (address[] memory) {
+        return buyers;
     }
 
     function isBuyerHasRIR(address buyer) external view returns (bool) {
@@ -163,6 +166,10 @@ contract LaunchPad is Pausable, Whitelist {
     function createOrder(uint256 _amountBusd, bool isRir) payable external {
 
         require(_amountBusd > 0, "Amount has to be positive");
+
+        require(individualMaximumAmountBusd >= _amountBusd, "Amount has to be positive");
+
+        require(individualMinimumAmountBusd <= _amountBusd, "Amount has to be positive");
 
         uint256 _amountRIR = 0;
 
@@ -189,7 +196,7 @@ contract LaunchPad is Pausable, Whitelist {
             ordersBuyerCount += 1 ether;
         }
 
-        emit OrdersBuyerEvent(_amountRIR, _amountBusd, 0, msg.sender, block.timestamp);
+        emit OrdersBuyerEvent(_amountRIR, _amountBusd, msg.sender, block.timestamp);
     }
 
     function isOrderInData(address _addr_buyer, address[] memory data) internal view returns (bool) {
@@ -203,7 +210,7 @@ contract LaunchPad is Pausable, Whitelist {
         return false;
     }
 
-    function syncOrder() external onlyOwner {
+    function syncOrder() external payable onlyOwner {
         uint i;
         while (i < buyers.length) {
             address addrBuyer = buyers[i];
@@ -213,6 +220,8 @@ contract LaunchPad is Pausable, Whitelist {
             if (isOrderInData(addrBuyer, buyersImport)) {
                 require(ordersBuyer[addrBuyer].amountBUSD >= ordersImport[addrBuyer].amountBUSD);
                 require(ordersBuyer[addrBuyer].amountRIR >= ordersImport[addrBuyer].amountRIR);
+                require(ordersImport[addrBuyer].amountBUSD >= individualMinimumAmountBusd);
+                require(ordersImport[addrBuyer].amountBUSD <= individualMaximumAmountBusd);
 
                 wallets[addrBuyer].amountRIR = ordersBuyer[addrBuyer].amountRIR - ordersImport[addrBuyer].amountRIR;
                 wallets[addrBuyer].amountBUSD = ordersBuyer[addrBuyer].amountBUSD - ordersImport[addrBuyer].amountBUSD;
@@ -228,10 +237,13 @@ contract LaunchPad is Pausable, Whitelist {
     }
 
     // Claim Token from Wallet Contract
-    function claimToken() external {
+    function claimToken() external payable isFunded {
         uint256 balanceBusd = wallets[msg.sender].amountBUSD;
+        require(this.availableBusd() >= balanceBusd,"Amount has to be positive");
         uint256 balanceRIR = wallets[msg.sender].amountRIR;
+        require(this.availableRIR() >= balanceRIR,"Amount has to be positive");
         uint256 balanceToken = wallets[msg.sender].amountToken;
+        require(this.availableTokens() >= balanceToken,"Amount has to be positive");
         require(bUSDAddress.transfer(msg.sender, balanceBusd), "ERC20 transfer failed");
         require(rirAddress.transfer(msg.sender, balanceRIR), "ERC20 transfer failed");
         require(tokenAddress.transfer(msg.sender, balanceToken), "ERC20 transfer failed");
@@ -252,9 +264,37 @@ contract LaunchPad is Pausable, Whitelist {
         if (unsoldTokens > 0) {
             unsoldTokensReedemed = true;
             require(
-                tokenAddress.transferFrom(msg.sender, ADDRESS_WITHDRAW, unsoldTokens),
+                tokenAddress.transfer(ADDRESS_WITHDRAW, unsoldTokens),
                 "ERC20 transfer failed"
             );
         }
+    }
+
+    function fund() external onlyOwner {
+        isSaleFunded = true;
+    }
+
+    function availableTokens() external view returns (uint256) {
+        return tokenAddress.balanceOf(address(this));
+    }
+
+    function availableBusd() external view returns (uint256) {
+        return bUSDAddress.balanceOf(address(this));
+    }
+
+    function availableRIR() external view returns (uint256) {
+        return rirAddress.balanceOf(address(this));
+    }
+
+    function removeOtherERC20Tokens(address _tokenAddress, address _to) external onlyOwner {
+        require(
+            _tokenAddress != address(erc20),
+            "Token Address has to be diff than the erc20 subject to sale"
+        ); // Confirm tokens addresses are different from main sale one
+        ERC20 erc20Token = ERC20(_tokenAddress);
+        require(
+            erc20Token.transfer(_to, erc20Token.balanceOf(address(this))),
+            "ERC20 Token transfer failed"
+        );
     }
 }
