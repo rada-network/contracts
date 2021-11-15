@@ -234,7 +234,7 @@ describe("LaunchPad", async function () {
             let launchPad_BusdAmount = await bUSDContract.balanceOf(launchPadContract.address);
             let launchPad_RIRAmount = await rirContract.balanceOf(launchPadContract.address);
             expect(utils.formatEther((launchPad_BusdAmount))).to.equal("600.0");
-            expect(utils.formatEther((launchPad_RIRAmount))).to.equal("4.0");
+            expect(utils.formatEther((launchPad_RIRAmount))).to.equal("3.0");
         });
 
         it('Sync Order', async function () {
