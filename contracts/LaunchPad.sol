@@ -290,7 +290,7 @@ contract LaunchPad is Pausable, Whitelist {
 
     function removeOtherERC20Tokens(address _tokenAddress, address _to) external onlyOwner {
         require(
-            _tokenAddress != address(erc20),
+            _tokenAddress != address(tokenAddress),
             "Token Address has to be diff than the erc20 subject to sale"
         ); // Confirm tokens addresses are different from main sale one
         ERC20 erc20Token = ERC20(_tokenAddress);
