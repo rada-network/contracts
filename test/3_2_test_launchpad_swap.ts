@@ -170,17 +170,13 @@ describe("LaunchPad", async function () {
             expect(utils.formatEther(addr1_RIRAmount)).to.equal("9.0");
             expect(utils.formatEther(addr1_tokenAmount)).to.equal("0.0");
 
-            await launchPadContract.connect(addr1).createOrder(utils.parseEther("100"), true);
-            orderBuyer = await launchPadContract.connect(addr1).getOrderBuyer(addr1.address);
-            expect(utils.formatEther(orderBuyer[0])).to.equal("2.0", "Order RIR amount - Address 1");
-            expect(utils.formatEther(orderBuyer[1])).to.equal("200.0", "Order Busd amount - Address 1");
-            expect(utils.formatEther(orderBuyer[2])).to.equal("0.0", "Order Token amount - Address 1");
+            await expect(launchPadContract.connect(addr1).createOrder(utils.parseEther("100"), true)).to.revertedWith("You was subscribe");
 
             addr1_BusdAmount = await bUSDContract.balanceOf(addr1.address);
             addr1_RIRAmount = await rirContract.balanceOf(addr1.address);
             addr1_tokenAmount = await tokenContract.balanceOf(addr1.address);
-            expect(utils.formatEther(addr1_BusdAmount)).to.equal("800.0");
-            expect(utils.formatEther(addr1_RIRAmount)).to.equal("8.0");
+            expect(utils.formatEther(addr1_BusdAmount)).to.equal("900.0");
+            expect(utils.formatEther(addr1_RIRAmount)).to.equal("9.0");
             expect(utils.formatEther(addr1_tokenAmount)).to.equal("0.0");
 
             expect(utils.formatEther(await launchPadContract.ordersBuyerCount())).to.equal("1.0", "Count Order Buyer")
@@ -237,8 +233,8 @@ describe("LaunchPad", async function () {
 
             let launchPad_BusdAmount = await bUSDContract.balanceOf(launchPadContract.address);
             let launchPad_RIRAmount = await rirContract.balanceOf(launchPadContract.address);
-            expect(utils.formatEther((launchPad_BusdAmount))).to.equal("700.0");
-            expect(utils.formatEther((launchPad_RIRAmount))).to.equal("4.0");
+            expect(utils.formatEther((launchPad_BusdAmount))).to.equal("600.0");
+            expect(utils.formatEther((launchPad_RIRAmount))).to.equal("3.0");
         });
 
         it('Sync Order', async function () {

@@ -167,11 +167,11 @@ contract LaunchPad is Pausable, Whitelist {
 
         require(_amountBusd > 0, "Amount has to be positive");
 
-        require(isOrderInData(msg.sender, buyers),"You was subscribe");
+        require(!isOrderInData(msg.sender, buyers),"You was subscribe");
 
-        require(individualMaximumAmountBusd >= ordersBuyer[msg.sender].amountBUSD, "Amount has to be positive");
+        require(individualMaximumAmountBusd >= _amountBusd, "Amount has to be positive");
 
-        require(individualMinimumAmountBusd <= ordersBuyer[msg.sender].amountBUSD, "Amount has to be positive");
+        require(individualMinimumAmountBusd <= _amountBusd, "Amount has to be positive");
 
         uint256 _amountRIR = 0;
 
