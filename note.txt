@@ -1,0 +1,6 @@
+npx hardhat run --network testnet scripts/3_1_deloy_launchpad.ts
+
+
+
+
+npx hardhat verify --network testnet contract_address 0xbaDB6b73c2FBE647a256Cf8F965f89573A054113 0x6945239350AE805b0823cB292a4dA5974d166640 0x6768BDC5d03A87942cE7cB143fA74e0DadE0371b 0x2386f26fc10000 0xd3c21bcecceda1000000 0x056bc75e2d63100000 0x1b1ae4d6e2ef500000 true

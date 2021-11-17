@@ -34,7 +34,7 @@ async function main() {
     const token = tokenContract.attach(
       tokenAddress
     );
-    await token.mint(launchPadAddress, utils.parseEther("1000000"));
+    //await token.mint(launchPadAddress, utils.parseEther("1000000"));
 }
 
 // We recommend this pattern to be able to use async/await everywhere

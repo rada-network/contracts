@@ -25,6 +25,14 @@ async function main() {
       rirAddress
     );
     await rir.mint(accounts[0],utils.parseEther("1000000"))
+
+    const tokenContact = await ethers.getContractFactory("ERC20Token");
+    const tokenAddress = "0xbaDB6b73c2FBE647a256Cf8F965f89573A054113"
+    console.log("tokenAddress : ", tokenAddress)
+    const token = tokenContact.attach(
+      tokenAddress
+    );
+    await token.mint(accounts[0],utils.parseEther("10000000"))
 }
 
 // We recommend this pattern to be able to use async/await everywhere
