@@ -1,5 +1,4 @@
 import {expect} from "chai";
-// @ts-ignore
 import {ethers} from "hardhat"
 
 describe("Whitelist", async function () {
