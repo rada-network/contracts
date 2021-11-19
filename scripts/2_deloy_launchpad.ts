@@ -4,7 +4,7 @@
 // When running the script with `hardhat run <script>` you'll find the Hardhat
 // Runtime Environment's members available in the global scope.
 // @ts-ignore
-import {ethers} from "hardhat";
+import {ethers, upgrades} from "hardhat";
 import {utils} from "ethers";
 
 async function main() {
@@ -13,27 +13,55 @@ async function main() {
     let bUSDContract = await bUSDFactory.deploy("BUSD", "BUSD");
     bUSDContract = await bUSDContract.deployed();
     const busdAddress = bUSDContract.address;
-    // console.log('BUSD: ', busdAddress);
+    console.log('BUSD: ', busdAddress);
 
     // Token project
     const tokenContractFactory = await ethers.getContractFactory("ERC20Token");
     let tokenContract = await tokenContractFactory.deploy("TOKEN", "TOKEN");
     tokenContract = await tokenContract.deployed();
     const tokenAddress = tokenContract.address;
-    // console.log('Token Project: ', tokenAddress);
+    console.log('Token Project: ', tokenAddress);
 
     // Token RIR
     const rirContractFactory = await ethers.getContractFactory("ERC20Token");
     let rirContract = await rirContractFactory.deploy("RIR", "RIR");
     rirContract = await rirContract.deployed();
     const rirAddress = rirContract.address;
-    // console.log('RIR Contract: ', rirAddress);
+    console.log('RIR Contract: ', rirAddress);
+
+    const startDate = Math.floor((Date.now() + 60 * 60 * 1000) / 1000);
+    const endDate = Math.floor((Date.now() + 7 * 24 * 60 * 60 * 1000) / 1000);
 
     const launchPadFactory = await ethers.getContractFactory("LaunchPad");
-    let launchPadContract = await launchPadFactory.deploy(tokenAddress, busdAddress, rirAddress, utils.parseEther("0.01"), true);
+    const paramLaunchpad = {
+        _tokenAddress: tokenAddress,
+        _bUSDAddress: busdAddress,
+        _rirAddress: rirAddress,
+        _tokenPrice: utils.parseEther("1"),
+        _tokensForSale: utils.parseEther("1000000"),
+        _startDate: startDate,
+        _endDate: endDate,
+        _individualMinimumAmount: utils.parseEther("100"),
+        _individualMaximumAmount: utils.parseEther("1000")
+    };
+
+    let launchPadContract = await upgrades.deployProxy(launchPadFactory, [
+            paramLaunchpad._tokenAddress,
+            paramLaunchpad._bUSDAddress,
+            paramLaunchpad._rirAddress,
+            paramLaunchpad._tokenPrice,
+            paramLaunchpad._tokensForSale,
+            paramLaunchpad._startDate,
+            paramLaunchpad._endDate,
+            paramLaunchpad._individualMinimumAmount,
+            paramLaunchpad._individualMaximumAmount,
+        ],
+        {unsafeAllowCustomTypes: true}
+    );
+
     launchPadContract = await launchPadContract.deployed();
     const launchPadAddress = launchPadContract.address;
-    // console.log('LaunchPad Contract: ', launchPadAddress);
+    console.log('LaunchPad Contract: ', launchPadAddress);
 
     // Send token to launchPad
     await tokenContract.mint(launchPadAddress, utils.parseEther("1000000"));

@@ -1,16 +1,16 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.2;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "./common/Whitelist.sol";
 import "hardhat/console.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
-contract LaunchPad is Pausable, Whitelist {
-    using SafeMath for uint256;
+contract LaunchPad is Initializable, ContextUpgradeable, PausableUpgradeable, OwnableUpgradeable {
+    using SafeMathUpgradeable for uint256;
 
     struct Order {
         uint256 amountRIR;
@@ -18,16 +18,16 @@ contract LaunchPad is Pausable, Whitelist {
         uint256 amountToken;
     }
 
-    mapping(address => Order) public ordersBuyer;
-    uint256 public ordersBuyerCount = 0;
-    address[] public buyers;
+    mapping(address => Order) public subscription;
+    uint256 public subscriptionCount;
+    address[] public subscribers;
 
-    mapping(address => Order) public ordersImport;
-    uint256 public ordersImportCount = 0;
-    address[] public buyersImport;
+    mapping(address => Order) public whitelist;
+    uint256 public whitelistCount;
+    address[] public buyerWhitelists;
 
-    mapping(address => Order) public wallets;
-    address[] public buyersWallets;
+    mapping(address => Order) public wins;
+    address[] public winners;
 
     event OrdersBuyerEvent(
         uint256 amountRIR,
@@ -36,17 +36,17 @@ contract LaunchPad is Pausable, Whitelist {
         uint256 timestamp
     );
 
-    bool public isSaleFunded = false;
+    bool public isSaleFunded;
     uint256 public startDate; /* Start Date  - https://www.epochconverter.com/ */
     uint256 public endDate; /* End Date  */
-    uint256 public individualMinimumAmountBusd = 0; /* Minimum Amount Per Address */
-    uint256 public individualMaximumAmountBusd = 0; /* Minimum Amount Per Address */
-    uint256 public tokenPrice = 0; /* Gia token theo USD */
-    uint256 public tokensAllocated = 0; /* Tokens Allocated */
-    uint256 public tokensForSale = 0; /* Tokens for Sale */
-    uint256 public rate = 100; /* 1 RIR = 100 BUSD */
-    bool public unsoldTokensReedemed = false;
-    address public ADDRESS_WITHDRAW = 0x128392d27439F0E76b3612E9B94f5E9C072d74e0;
+    uint256 public individualMinimumAmountBusd; /* Minimum Amount Per Address */
+    uint256 public individualMaximumAmountBusd; /* Minimum Amount Per Address */
+    uint256 public tokenPrice; /* Gia token theo USD */
+    uint256 public tokensAllocated; /* Tokens Allocated */
+    uint256 public tokensForSale; /* Tokens for Sale */
+    uint256 public rate; /* 1 RIR = 100 BUSD */
+    bool public unsoldTokensReedemed;
+    address public ADDRESS_WITHDRAW;
 
     ERC20 public tokenAddress;
     ERC20 public bUSDAddress;
@@ -57,30 +57,32 @@ contract LaunchPad is Pausable, Whitelist {
         _;
     }
 
-    constructor(
+    function initialize(
         address _tokenAddress,
         address _bUSDAddress,
         address _rirAddress,
         uint256 _tokenPrice, // Price Token (Ex: 1 TOKEN = 0.01 BUSD)
         uint256 _tokensForSale,
-    //        uint256 _startDate,
-    //        uint256 _endDate,
+        uint256 _startDate,
+        uint256 _endDate,
         uint256 _individualMinimumAmountBusd,
-        uint256 _individualMaximumAmountBusd,
-        bool _hasWhitelisting
-    ) Whitelist(_hasWhitelisting) {
+        uint256 _individualMaximumAmountBusd
+    ) public initializer {
+        __Context_init_unchained();
+        __Ownable_init();
+        __Pausable_init();
         //        require(
         //            block.timestamp < _endDate,
         //            "End Date should be further than current date"
         //        );
-        //
+
         //        require(
         //            block.timestamp < _startDate,
         //            "Start Date should be further than current date"
         //        );
-        //
-        //        require(_startDate < _endDate, "End Date higher than Start Date");
-        //
+
+        require(_startDate < _endDate, "End Date higher than Start Date");
+
         require(_tokenPrice > 0, "Price token of project should be > 0");
 
         require(_tokensForSale > 0, "Tokens for Sale should be > 0");
@@ -95,10 +97,17 @@ contract LaunchPad is Pausable, Whitelist {
             "Individual Maximim AMount should be > Individual Minimum Amount"
         );
 
-        //        startDate = _startDate;
-        //        endDate = _endDate;
+        startDate = _startDate;
+        endDate = _endDate;
         tokensForSale = _tokensForSale;
         tokenPrice = _tokenPrice;
+        tokensAllocated = 0;
+        subscriptionCount = 0;
+        whitelistCount = 0;
+        rate = 100;
+        unsoldTokensReedemed = false;
+        isSaleFunded = false;
+        ADDRESS_WITHDRAW = 0x128392d27439F0E76b3612E9B94f5E9C072d74e0;
         individualMinimumAmountBusd = _individualMinimumAmountBusd;
         individualMaximumAmountBusd = _individualMaximumAmountBusd;
 
@@ -111,11 +120,27 @@ contract LaunchPad is Pausable, Whitelist {
         return tokensForSale - tokensAllocated;
     }
 
-    function addOrdersImport(address[] calldata _buyer, uint256[] calldata _amountToken, bool[] calldata isRir) external onlyOwner {
+    function getBuyerInWhitelist(address _buyer) external view returns (Order memory) {
+        return whitelist[_buyer];
+    }
+
+    function getSubscriber(address _buyer) external view returns (Order memory) {
+        return subscription[_buyer];
+    }
+
+    function getWinners() external view returns (address[] memory) {
+        return winners;
+    }
+
+    function getSubscribers() external view returns (address[] memory) {
+        return subscribers;
+    }
+
+    function importWhitelist(address[] calldata _buyer, uint256[] calldata _amountToken, bool[] calldata isRir) external onlyOwner {
 
         for (uint256 i = 0; i < _buyer.length; i++) {
 
-            require(!isOrderInData(_buyer[i], buyersImport), 'Address Buyer already exist');
+            require(!isBuyerAdded(_buyer[i], buyerWhitelists), 'Address Buyer already exist');
 
             require(_amountToken[i] > 0, "Amount has to be positive");
 
@@ -133,41 +158,25 @@ contract LaunchPad is Pausable, Whitelist {
 
             require(_amount_busd > 0, "Amount has to be positive");
 
-            Order memory _orderImport = Order(_amount_rir, _amount_busd, _amountToken[i]);
+            Order memory _whitelist = Order(_amount_rir, _amount_busd, _amountToken[i]);
 
-            ordersImport[_buyer[i]] = _orderImport;
+            whitelist[_buyer[i]] = _whitelist;
 
-            buyersImport.push(_buyer[i]);
+            buyerWhitelists.push(_buyer[i]);
 
-            ordersImportCount += 1 ether;
+            subscriptionCount += 1 ether;
         }
-    }
-
-    function getOrderImport(address _buyer) external onlyOwner view returns (Order memory) {
-        return ordersImport[_buyer];
-    }
-
-    function getOrderBuyer(address _buyer) external view returns (Order memory) {
-        return ordersBuyer[_buyer];
-    }
-
-    function getBuyersWallets() external view returns (address[] memory) {
-        return buyersWallets;
-    }
-
-    function getBuyers() external view returns (address[] memory) {
-        return buyers;
     }
 
     function isBuyerHasRIR(address buyer) external view returns (bool) {
         return rirAddress.balanceOf(buyer) > 0;
     }
 
-    function createOrder(uint256 _amountBusd, bool isRir) payable external {
+    function createSubscription(uint256 _amountBusd, bool isRir) payable external {
 
         require(_amountBusd > 0, "Amount has to be positive");
 
-        require(!isOrderInData(msg.sender, buyers),"You was subscribe");
+        require(!isBuyerAdded(msg.sender, subscribers), "You was subscribe");
 
         require(individualMaximumAmountBusd >= _amountBusd, "Amount is overcome maximum");
 
@@ -184,24 +193,24 @@ contract LaunchPad is Pausable, Whitelist {
 
             require(rirAddress.transferFrom(msg.sender, address(this), _amountRIR), "Transfer RIR fail");
 
-            ordersBuyer[msg.sender].amountRIR += _amountRIR;
+            subscription[msg.sender].amountRIR += _amountRIR;
         }
 
         require(bUSDAddress.balanceOf(msg.sender) >= _amountBusd, "You dont have enough Busd Token");
 
         require(bUSDAddress.transferFrom(msg.sender, address(this), _amountBusd), "Transfer BUSD fail");
 
-        ordersBuyer[msg.sender].amountBUSD += _amountBusd;
+        subscription[msg.sender].amountBUSD += _amountBusd;
 
-        if (!isOrderInData(msg.sender, buyers)) {
-            buyers.push(msg.sender);
-            ordersBuyerCount += 1 ether;
+        if (!isBuyerAdded(msg.sender, subscribers)) {
+            subscribers.push(msg.sender);
+            subscriptionCount += 1 ether;
         }
 
         emit OrdersBuyerEvent(_amountRIR, _amountBusd, msg.sender, block.timestamp);
     }
 
-    function isOrderInData(address _addr_buyer, address[] memory data) internal view returns (bool) {
+    function isBuyerAdded(address _addr_buyer, address[] memory data) internal view returns (bool) {
         uint i;
         while (i < data.length) {
             if (_addr_buyer == data[i]) {
@@ -212,27 +221,27 @@ contract LaunchPad is Pausable, Whitelist {
         return false;
     }
 
-    function syncOrder() external payable onlyOwner {
-        uint i;
-        while (i < buyers.length) {
-            address addrBuyer = buyers[i];
+    function sync() external payable onlyOwner {
+        uint i = 0;
+        while (i < subscribers.length) {
+            address addrBuyer = subscribers[i];
 
-            buyersWallets.push(addrBuyer);
+            winners.push(addrBuyer);
 
-            if (isOrderInData(addrBuyer, buyersImport)) {
-                require(ordersBuyer[addrBuyer].amountBUSD >= ordersImport[addrBuyer].amountBUSD);
-                require(ordersBuyer[addrBuyer].amountRIR >= ordersImport[addrBuyer].amountRIR);
-                require(ordersImport[addrBuyer].amountBUSD >= individualMinimumAmountBusd);
-                require(ordersImport[addrBuyer].amountBUSD <= individualMaximumAmountBusd);
+            if (isBuyerAdded(addrBuyer, buyerWhitelists)) {
+                require(subscription[addrBuyer].amountBUSD >= whitelist[addrBuyer].amountBUSD);
+                require(subscription[addrBuyer].amountRIR >= whitelist[addrBuyer].amountRIR);
+                require(whitelist[addrBuyer].amountBUSD >= individualMinimumAmountBusd);
+                require(whitelist[addrBuyer].amountBUSD <= individualMaximumAmountBusd);
 
-                wallets[addrBuyer].amountRIR = ordersBuyer[addrBuyer].amountRIR - ordersImport[addrBuyer].amountRIR;
-                wallets[addrBuyer].amountBUSD = ordersBuyer[addrBuyer].amountBUSD - ordersImport[addrBuyer].amountBUSD;
-                wallets[addrBuyer].amountToken = ordersImport[addrBuyer].amountToken;
+                wins[addrBuyer].amountRIR = subscription[addrBuyer].amountRIR - whitelist[addrBuyer].amountRIR;
+                wins[addrBuyer].amountBUSD = subscription[addrBuyer].amountBUSD - whitelist[addrBuyer].amountBUSD;
+                wins[addrBuyer].amountToken = whitelist[addrBuyer].amountToken;
 
-                tokensAllocated += wallets[addrBuyer].amountToken;
+                tokensAllocated += wins[addrBuyer].amountToken;
             } else {
-                wallets[addrBuyer] = ordersBuyer[addrBuyer];
-                wallets[addrBuyer].amountToken = 0;
+                wins[addrBuyer] = subscription[addrBuyer];
+                wins[addrBuyer].amountToken = 0;
             }
             i++;
         }
@@ -240,16 +249,16 @@ contract LaunchPad is Pausable, Whitelist {
 
     // Claim Token from Wallet Contract
     function claimToken() external payable isFunded {
-        uint256 balanceBusd = wallets[msg.sender].amountBUSD;
-        require(this.availableBusd() >= balanceBusd,"Amount has to be positive");
-        uint256 balanceRIR = wallets[msg.sender].amountRIR;
-        require(this.availableRIR() >= balanceRIR,"Amount has to be positive");
-        uint256 balanceToken = wallets[msg.sender].amountToken;
-        require(this.availableTokens() >= balanceToken,"Amount has to be positive");
+        uint256 balanceBusd = wins[msg.sender].amountBUSD;
+        require(this.availableBusd() >= balanceBusd, "Amount has to be positive");
+        uint256 balanceRIR = wins[msg.sender].amountRIR;
+        require(this.availableRIR() >= balanceRIR, "Amount has to be positive");
+        uint256 balanceToken = wins[msg.sender].amountToken;
+        require(this.availableTokens() >= balanceToken, "Amount has to be positive");
         require(bUSDAddress.transfer(msg.sender, balanceBusd), "ERC20 transfer failed");
         require(rirAddress.transfer(msg.sender, balanceRIR), "ERC20 transfer failed");
         require(tokenAddress.transfer(msg.sender, balanceToken), "ERC20 transfer failed");
-        delete wallets[msg.sender];
+        delete wins[msg.sender];
     }
 
     /* Admin withdraw */
@@ -292,7 +301,8 @@ contract LaunchPad is Pausable, Whitelist {
         require(
             _tokenAddress != address(tokenAddress),
             "Token Address has to be diff than the erc20 subject to sale"
-        ); // Confirm tokens addresses are different from main sale one
+        );
+        // Confirm tokens addresses are different from main sale one
         ERC20 erc20Token = ERC20(_tokenAddress);
         require(
             erc20Token.transfer(_to, erc20Token.balanceOf(address(this))),
