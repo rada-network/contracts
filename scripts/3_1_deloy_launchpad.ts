@@ -4,37 +4,66 @@
 // When running the script with `hardhat run <script>` you'll find the Hardhat
 // Runtime Environment's members available in the global scope.
 // @ts-ignore
-import {ethers} from "hardhat";
-import {utils} from "ethers";
+import { ethers, upgrades } from "hardhat";
+import { utils } from "ethers";
 
 async function main() {
     // Token Busd
     const busdAddress = "0x6945239350AE805b0823cB292a4dA5974d166640";
-     console.log('BUSD: ', busdAddress);
+    console.log('BUSD: ', busdAddress);
 
     // Token project
     const tokenAddress = "0xbaDB6b73c2FBE647a256Cf8F965f89573A054113";
-     console.log('Token Project: ', tokenAddress);
+    console.log('Token Project: ', tokenAddress);
 
     // Token RIR
-  
+
     const rirAddress = "0x6768BDC5d03A87942cE7cB143fA74e0DadE0371b";
     console.log('RIR Contract: ', rirAddress);
 
+
     const launchPadFactory = await ethers.getContractFactory("LaunchPad");
-    let launchPadContract = await launchPadFactory.deploy(tokenAddress, busdAddress, rirAddress, utils.parseEther("0.01"),utils.parseEther("1000000"),utils.parseEther("100"),utils.parseEther("500"), true);
-    
+
+    const startDate = Math.floor((Date.now() + 60 * 60 * 1000) / 1000);
+    const endDate = Math.floor((Date.now() + 7 * 24 * 60 * 60 * 1000) / 1000);
+    const paramLaunchpad = {
+        _tokenAddress: tokenAddress,
+        _bUSDAddress: busdAddress,
+        _rirAddress: rirAddress,
+        _tokenPrice: utils.parseEther("1"),
+        _bUSDForSale: utils.parseEther("1000"),
+        _startDate: startDate,
+        _endDate: endDate,
+        _individualMinimumAmountBusd: utils.parseEther("100"),
+        _individualMaximumAmountBusd: utils.parseEther("500"),
+        _feeTax: 0,
+    };
+
+    let launchPadContract = await upgrades.deployProxy(launchPadFactory, [
+        paramLaunchpad._tokenAddress,
+        paramLaunchpad._bUSDAddress,
+        paramLaunchpad._rirAddress,
+        paramLaunchpad._tokenPrice,
+        paramLaunchpad._bUSDForSale,
+        paramLaunchpad._startDate,
+        paramLaunchpad._endDate,
+        paramLaunchpad._individualMinimumAmountBusd,
+        paramLaunchpad._individualMaximumAmountBusd,
+        paramLaunchpad._feeTax
+    ],
+        { unsafeAllowCustomTypes: true }
+    );
     launchPadContract = await launchPadContract.deployed();
     const launchPadAddress = launchPadContract.address;
-     console.log('LaunchPad Contract: ', launchPadAddress);
-     console.log("LaunchPad Contract param",tokenAddress, busdAddress, rirAddress, utils.parseEther("0.01"),utils.parseEther("1000000"),utils.parseEther("100"),utils.parseEther("500"), true)
-    // Send token to launchPad
 
+    console.log('LaunchPad Contract: ', launchPadAddress);
+   
+    // Send token to launchPad
     const tokenContract = await ethers.getContractFactory("ERC20Token");
     const token = tokenContract.attach(
-      tokenAddress
+        tokenAddress
     );
-    //await token.mint(launchPadAddress, utils.parseEther("1000000"));
+    await token.mint(launchPadAddress, utils.parseEther("1000000"));
 }
 
 // We recommend this pattern to be able to use async/await everywhere
