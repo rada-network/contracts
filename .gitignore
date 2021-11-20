@@ -9,3 +9,4 @@ artifacts
 
 #Hardhat files
 /.idea/
+/.env
