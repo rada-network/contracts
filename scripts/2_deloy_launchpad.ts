@@ -38,27 +38,28 @@ async function main() {
         _bUSDAddress: busdAddress,
         _rirAddress: rirAddress,
         _tokenPrice: utils.parseEther("1"),
-        _tokensForSale: utils.parseEther("1000000"),
+        _bUSDForSale: utils.parseEther("1000"),
         _startDate: startDate,
         _endDate: endDate,
-        _individualMinimumAmount: utils.parseEther("100"),
-        _individualMaximumAmount: utils.parseEther("1000")
+        _individualMinimumAmountBusd: utils.parseEther("100"),
+        _individualMaximumAmountBusd: utils.parseEther("500"),
+        _feeTax: 0,
     };
 
     let launchPadContract = await upgrades.deployProxy(launchPadFactory, [
-            paramLaunchpad._tokenAddress,
-            paramLaunchpad._bUSDAddress,
-            paramLaunchpad._rirAddress,
-            paramLaunchpad._tokenPrice,
-            paramLaunchpad._tokensForSale,
-            paramLaunchpad._startDate,
-            paramLaunchpad._endDate,
-            paramLaunchpad._individualMinimumAmount,
-            paramLaunchpad._individualMaximumAmount,
-        ],
-        {unsafeAllowCustomTypes: true}
+        paramLaunchpad._tokenAddress,
+        paramLaunchpad._bUSDAddress,
+        paramLaunchpad._rirAddress,
+        paramLaunchpad._tokenPrice,
+        paramLaunchpad._bUSDForSale,
+        paramLaunchpad._startDate,
+        paramLaunchpad._endDate,
+        paramLaunchpad._individualMinimumAmountBusd,
+        paramLaunchpad._individualMaximumAmountBusd,
+        paramLaunchpad._feeTax
+    ],
+        { unsafeAllowCustomTypes: true }
     );
-
     launchPadContract = await launchPadContract.deployed();
     const launchPadAddress = launchPadContract.address;
     console.log('LaunchPad Contract: ', launchPadAddress);
