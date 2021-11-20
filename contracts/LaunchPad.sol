@@ -95,7 +95,6 @@ contract LaunchPad is
         uint256 _individualMaximumAmountBusd,
         uint256 _feeTax
     ) public initializer {
-        __Context_init_unchained();
         __Ownable_init();
         __Pausable_init();
         //        require(
@@ -267,7 +266,7 @@ contract LaunchPad is
     }
 
     function commitWinners() external payable onlyOwner onlyUncommit {
-        require(winners.length > 0);
+        require(winners.length > 0,"aaaaaaa");
 
         require(verifySubWinnerHasRIR(), "Winner dont have in winners list");
 

@@ -221,45 +221,63 @@ describe("LaunchPad", async function () {
                     await expect(importWinners).to.revertedWith("Buyer is not subscriber");
                 })
 
-                it('Import is OK', async function () {
+                describe("Import is OK", () => {
+                    it('Import is OK', async function () {
 
-                    await launchPadContract.connect(owner).importWinners(
-                        [addr1.address, addr2.address],
-                        [utils.parseEther("500"), utils.parseEther("200")],
-                    );
+                        await launchPadContract.connect(owner).importWinners(
+                            [addr1.address, addr2.address],
+                            [utils.parseEther("500"), utils.parseEther("200")],
+                        );
 
-                    const orderAddr1 = await launchPadContract.getOrderWinner(addr1.address);
-                    expect(utils.formatEther(orderAddr1.amountRIR)).to.equal("0.0");
-                    expect(utils.formatEther(orderAddr1.amountBUSD)).to.equal("500.0");
+                        const orderAddr1 = await launchPadContract.getOrderWinner(addr1.address);
+                        expect(utils.formatEther(orderAddr1.amountRIR)).to.equal("0.0");
+                        expect(utils.formatEther(orderAddr1.amountBUSD)).to.equal("500.0");
 
-                    const orderAddr2 = await launchPadContract.getOrderWinner(addr2.address);
-                    expect(utils.formatEther(orderAddr2.amountRIR)).to.equal("0.0");
-                    expect(utils.formatEther(orderAddr2.amountBUSD)).to.equal("200.0");
+                        const orderAddr2 = await launchPadContract.getOrderWinner(addr2.address);
+                        expect(utils.formatEther(orderAddr2.amountRIR)).to.equal("0.0");
+                        expect(utils.formatEther(orderAddr2.amountBUSD)).to.equal("200.0");
 
-                    let count = await launchPadContract.winCount();
-                    expect(count).to.equal(2);
+                        let count = await launchPadContract.winCount();
+                        expect(count).to.equal(2);
 
-                    let winners = await launchPadContract.getWinners();
-                    expect(winners.length).to.equal(2);
+                        let winners = await launchPadContract.getWinners();
+                        expect(winners.length).to.equal(2);
 
-                    const importWinners = launchPadContract.connect(owner).importWinners(
-                        [addr4.address],
-                        [utils.parseEther("10")]
-                    );
+                        const importWinners = launchPadContract.connect(owner).importWinners(
+                            [addr4.address],
+                            [utils.parseEther("10")]
+                        );
 
-                    await expect(importWinners).to.revertedWith("Wins need empty");
-                    count = await launchPadContract.winCount();
-                    expect(count).to.equal(2);
+                        await expect(importWinners).to.revertedWith("Wins need empty");
+                        count = await launchPadContract.winCount();
+                        expect(count).to.equal(2);
+
+                        describe("Imported", () => {
+                            it('ReImport', async function () {
+                                await launchPadContract.connect(owner).setEmptyWins();
+                                count = await launchPadContract.winCount();
+                                expect(count).to.equal(0);
+                                winners = await launchPadContract.getWinners();
+                                expect(winners.length).to.equal(0);
+
+                                await launchPadContract.connect(owner).importWinners(
+                                    [addr1.address],
+                                    [utils.parseEther("100")]
+                                );
+
+                            })
+                        })
 
 
-                    await launchPadContract.connect(owner).setEmptyWins();
-                    count = await launchPadContract.winCount();
-                    expect(count).to.equal(0);
-                    winners = await launchPadContract.getWinners();
-                    expect(winners.length).to.equal(0);
+                        describe("Commit Winners", () => {
+                            it('Commit', async function () {
+                                await launchPadContract.connect(owner).commitWinners();
+                            })
+                        })
 
+
+                    });
                 });
-
                 it('Cannot Import', async function () {
                     const importWinners = launchPadContract.connect(owner).importWinners(
                         [addr1.address, addr1.address, addr2.address],
@@ -276,20 +294,6 @@ describe("LaunchPad", async function () {
                     await expect(launchPadContract.connect(owner).setEmptyWins()).to.reverted;
                 })
 
-                it('Commit Winners', async function () {
-                    //     await expect(launchPadContract.connect(owner).verifyWhitelist()).to.reverted;
-
-                    //     await launchPadContract.connect(owner).importWinners(
-                    //         [owner.address, addr1.address, addr2.address, addr3.address],
-                    //         [utils.parseEther("1000"), utils.parseEther("2000"), utils.parseEther("2000"), utils.parseEther("2000")],
-                    //         [true, true, false, true]
-                    //     );
-
-                    //     const verifyWhiteList = await launchPadContract.connect(owner).verifyWhitelist();
-                    //     const isVerify = await launchPadContract.connect(owner).isVerifyWhitelist();
-                    //     expect(isVerify).to.true;
-
-                })
             });
         });
 
