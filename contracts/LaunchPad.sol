@@ -32,6 +32,10 @@ contract LaunchPad is
     uint256 public winCount;
     address[] public winners;
 
+    mapping(address => Order) public wallets;
+    uint256 public buyersCount;
+    address[] public buyers;
+
     event SubscriptionEvent(
         uint256 amountRIR,
         uint256 amountBUSD,
@@ -46,12 +50,17 @@ contract LaunchPad is
         _;
     }
 
-    modifier onlyUnverifyWin() {
-        require(!isAllowClaim, "Wins is verifyed");
+    modifier onlyUncommit() {
+        require(!isCommit, "Wins is verifyed");
         _;
     }
 
-    bool public isAllowClaim;
+    modifier onlyCommit() {
+        require(isCommit, "Wins not verifyed");
+        _;
+    }
+
+    bool public isCommit;
     uint256 public startDate; /* Start Date  - https://www.epochconverter.com/ */
     uint256 public endDate; /* End Date  */
     uint256 public individualMinimumAmountBusd; /* Minimum Amount Per Address */
@@ -126,7 +135,7 @@ contract LaunchPad is
         rate = 100;
         feeTax = _feeTax;
         unsoldTokensReedemed = false;
-        isAllowClaim = false;
+        isCommit = false;
         ADDRESS_WITHDRAW = 0x128392d27439F0E76b3612E9B94f5E9C072d74e0;
         individualMinimumAmountBusd = _individualMinimumAmountBusd;
         individualMaximumAmountBusd = _individualMaximumAmountBusd;
@@ -193,7 +202,7 @@ contract LaunchPad is
     /**
      * Set Wins is empty
      **/
-    function setEmptyWins() external onlyOwner onlyUnverifyWin {
+    function setEmptyWins() external onlyOwner onlyUncommit {
         require(winCount > 0);
         require(winners.length > 0);
         for (uint256 i = 0; i < winners.length; i++) {
@@ -251,46 +260,48 @@ contract LaunchPad is
         }
     }
 
-    /*
-    /*
-    not allow modify winners list
-    allow claim
-
-    rquire:
-    // call verify winner list            
-    total sub >= total busd => total win == total busd
-    total sub < total busd => total win == total sub
-    // all subscriber with rir must be in list wins
-
-
-    set status to done
-    */
-    function commitWinners() external payable onlyOwner {
+    function commitWinners() external payable onlyOwner onlyUncommit {
         require(winners.length > 0);
 
-        uint256 _bUSDAllocated = 0;
+        require(verifySubWinnerHasRIR(), "Winner dont have in winners list");
+
+        uint256 _bUSDAllocatedWins = 0;
+        uint256 _bUSDAllocatedSub = 0;
+        uint256 _bUSDForSale = 0;
+
+        for (uint256 i = 0; i < subscribers.length; i++) {
+            address _subscriber = subscribers[i];
+            _bUSDAllocatedSub += subscription[_subscriber].amountBUSD;
+        }
+
+        if (_bUSDAllocatedSub >= bUSDForSale) {
+            _bUSDForSale = bUSDForSale;
+        } else {
+            _bUSDForSale = _bUSDAllocatedSub;
+        }
 
         for (uint256 i = 0; i < winners.length; i++) {
             address _winner = winners[i];
-            _bUSDAllocated += wins[_winner].amountBUSD;
-
-            require(
-                wins[_winner].amountBUSD >= individualMinimumAmountBusd,
-                "Individual Minimum Amount Busd"
-            );
-
-            require(
-                wins[_winner].amountBUSD <= individualMaximumAmountBusd,
-                "Individual Maximum Amount Busd"
-            );
+            _bUSDAllocatedWins += wins[_winner].amountBUSD;
         }
 
         require(
-            _bUSDAllocated <= bUSDForSale,
+            _bUSDAllocatedWins == _bUSDForSale,
             "Exceeded the number of tokens sold"
         );
 
-        require(isAllowClaim = true);
+        require(isCommit = true);
+    }
+
+    function verifySubWinnerHasRIR() internal view returns (bool) {
+        bool _isVerify = true;
+        for (uint256 i = 0; i < subscribers.length; i++) {
+            address _subscriber = subscribers[i];
+            if (!this.isWinner(_subscriber)) {
+                _isVerify = false;
+            }
+        }
+        return _isVerify;
     }
 
     function isBuyerHasRIR(address buyer) external view returns (bool) {
@@ -320,18 +331,19 @@ contract LaunchPad is
             "Amount is overcome minimum"
         );
 
-        // Prevent misunderstanding: only RIR is enough
-        require(
-            subscription[msg.sender].amountRIR.add(_amountRIR).mul(rate) <=
-                subscription[msg.sender].amountBUSD.add(_amountBusd),
-            "Amount is not valid"
-        );
-
         if (_amountRIR > 0) {
             require(
                 rirAddress.balanceOf(msg.sender) >= _amountRIR,
                 "You dont have enough RIR Token"
             );
+
+            require(
+                bUSDAddress.balanceOf(msg.sender) >= _amountBusd,
+                "You dont have enough Busd Token"
+            );
+
+            // Prevent misunderstanding: only RIR is enough
+            require(_amountRIR.mul(rate) <= _amountBusd, "Amount is not valid");
 
             require(
                 rirAddress.transferFrom(msg.sender, address(this), _amountRIR),
@@ -392,32 +404,6 @@ contract LaunchPad is
         return false;
     }
 
-    // function sync() external payable onlyOwner {
-    //     uint i = 0;
-    //     while (i < subscribers.length) {
-    //         address addrBuyer = subscribers[i];
-
-    //         winners.push(addrBuyer);
-
-    //         if (isBuyerAdded(addrBuyer, winners)) {
-    //             require(subscription[addrBuyer].amountBUSD >= whitelist[addrBuyer].amountBUSD);
-    //             require(subscription[addrBuyer].amountRIR >= whitelist[addrBuyer].amountRIR);
-    //             require(whitelist[addrBuyer].amountBUSD >= individualMinimumAmountBusd);
-    //             require(whitelist[addrBuyer].amountBUSD <= individualMaximumAmountBusd);
-
-    //             wins[addrBuyer].amountRIR = subscription[addrBuyer].amountRIR - whitelist[addrBuyer].amountRIR;
-    //             wins[addrBuyer].amountBUSD = subscription[addrBuyer].amountBUSD - whitelist[addrBuyer].amountBUSD;
-    //             wins[addrBuyer].amountToken = whitelist[addrBuyer].amountToken;
-
-    //             tokensAllocated += wins[addrBuyer].amountToken;
-    //         } else {
-    //             wins[addrBuyer] = subscription[addrBuyer];
-    //             wins[addrBuyer].amountToken = 0;
-    //         }
-    //         i++;
-    //     }
-    // }
-
     // Claim Token from Wallet Contract
     function claimToken() external payable {
         /*
@@ -460,16 +446,70 @@ contract LaunchPad is
         // delete wins[msg.sender];
     }
 
+    // function sync() internal payable onlyOwner {
+    //     uint256 i = 0;
+    //     while (i < subscribers.length) {
+    //         address addrBuyer = subscribers[i];
+
+    //         winners.push(addrBuyer);
+
+    //         if (isBuyerAdded(addrBuyer, winners)) {
+    //             require(
+    //                 subscription[addrBuyer].amountBUSD >=
+    //                     whitelist[addrBuyer].amountBUSD
+    //             );
+    //             require(
+    //                 subscription[addrBuyer].amountRIR >=
+    //                     whitelist[addrBuyer].amountRIR
+    //             );
+    //             require(
+    //                 whitelist[addrBuyer].amountBUSD >=
+    //                     individualMinimumAmountBusd
+    //             );
+    //             require(
+    //                 whitelist[addrBuyer].amountBUSD <=
+    //                     individualMaximumAmountBusd
+    //             );
+
+    //             wins[addrBuyer].amountRIR =
+    //                 subscription[addrBuyer].amountRIR -
+    //                 whitelist[addrBuyer].amountRIR;
+    //             wins[addrBuyer].amountBUSD =
+    //                 subscription[addrBuyer].amountBUSD -
+    //                 whitelist[addrBuyer].amountBUSD;
+    //             wins[addrBuyer].amountToken = whitelist[addrBuyer].amountToken;
+
+    //             tokensAllocated += wins[addrBuyer].amountToken;
+    //         } else {
+    //             wins[addrBuyer] = subscription[addrBuyer];
+    //             wins[addrBuyer].amountToken = 0;
+    //         }
+    //         i++;
+    //     }
+    // }
+
     /* Admin withdraw */
     /*
         require: project done (winner list committed)
         widthdraw busd = total win busd
 
     */
-    function withdrawBusdFunds() external onlyOwner {
-        // Chi rut phan Busd đã bán
-        // uint256 _balanceBusd = bUSDAddress.balanceOf(address(this));
-        // bUSDAddress.transferFrom(msg.sender, ADDRESS_WITHDRAW, _balanceBusd);
+    function withdrawBusdFunds() external onlyOwner onlyCommit {
+        uint256 _balanceBusd = getTotalBusdWinners();
+        bUSDAddress.transfer(ADDRESS_WITHDRAW, _balanceBusd);
+    }
+
+    function getTotalBusdWinners() internal view returns (uint256) {
+        uint256 _totalBusdSold = 0;
+        for (uint256 i = 0; i < winners.length; i++) {
+            address _winner = winners[i];
+            _totalBusdSold += wins[_winner].amountBUSD;
+        }
+        return _totalBusdSold;
+    }
+
+    function getTotalUnsoldTokens() internal view returns (uint256) {
+
     }
 
     /* Admin withdraw unsold token */
@@ -477,7 +517,7 @@ contract LaunchPad is
     require all totken send to contract
     total unsoldtoken = (total busd - total win)/total busd * total token in contract
     */
-    function withdrawUnsoldTokens() external onlyOwner {
+    function withdrawUnsoldTokens() external onlyOwner onlyCommit {
         // Chi rut phan token chưa bán
         require(!unsoldTokensReedemed);
         // uint256 unsoldTokens;
