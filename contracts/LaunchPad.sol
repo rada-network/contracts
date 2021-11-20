@@ -1,145 +1,521 @@
 //SPDX-License-Identifier: Unlicense
-pragma solidity ^0.8.2;
+pragma solidity ^0.8.5;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "./common/Whitelist.sol";
-import "./common/StatusContract.sol";
 import "hardhat/console.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
-contract LaunchPad is Pausable, Whitelist {
-    using SafeMath for uint256;
+contract LaunchPad is
+    Initializable,
+    ContextUpgradeable,
+    PausableUpgradeable,
+    OwnableUpgradeable
+{
+    using SafeMathUpgradeable for uint256;
 
-    struct Wallet {
-        address buyer;
+    struct Order {
         uint256 amountRIR;
         uint256 amountBUSD;
         uint256 amountToken;
+        address referer;
     }
 
-    struct Order {
-        address buyer;
-        uint256 amountBUSD;
-        uint256 amountToken;
-        StatusContract status;
+    mapping(address => Order) public subscription;
+    uint256 public subscriptionCount;
+    address[] public subscribers;
+
+    mapping(address => Order) public wins;
+    uint256 public winCount;
+    address[] public winners;
+
+    event SubscriptionEvent(
+        uint256 amountRIR,
+        uint256 amountBUSD,
+        address indexed referer,
+        address indexed buyer,
+        uint256 timestamp
+    );
+
+    modifier winEmpty() {
+        require(winners.length == 0, "Wins need empty");
+        require(winCount == 0, "Wins need empty");
+        _;
     }
 
-    mapping(uint256 => Order) public orders;
-    mapping(address => Wallet) public wallets;
+    modifier onlyUnverifyWin() {
+        require(!isAllowClaim, "Wins is verifyed");
+        _;
+    }
 
+    bool public isAllowClaim;
     uint256 public startDate; /* Start Date  - https://www.epochconverter.com/ */
     uint256 public endDate; /* End Date  */
-    uint256 public individualMinimumAmount = 0; /* Minimum Amount Per Address */
-    uint256 public individualMaximumAmount = 0; /* Minimum Amount Per Address */
+    uint256 public individualMinimumAmountBusd; /* Minimum Amount Per Address */
+    uint256 public individualMaximumAmountBusd; /* Minimum Amount Per Address */
     uint256 public tokenPrice; /* Gia token theo USD */
-    uint256 public tokensAllocated = 0; /* Tokens Available for Allocation - Dynamic */
-    uint256 public tokensForSale = 0; /* Tokens Available for Sale */
-    uint256 public rate = 100; /* 1 RIR = 100 BUSD */
+    uint256 public bUSDAllocated; /* Tokens Allocated */
+    uint256 public bUSDForSale; /* Tokens for Sale */
+    uint256 public rate; /* 1 RIR = 100 BUSD */
+    uint256 public feeTax;
+    bool public unsoldTokensReedemed;
+    address public ADDRESS_WITHDRAW;
 
     ERC20 public tokenAddress;
     ERC20 public bUSDAddress;
     ERC20 public rirAddress;
 
-    event OrderEvent(
-        uint256 amount,
-        address indexed buyer,
-        uint256 timestamp
-    );
-
-    event WalletEvent(
-        address buyer,
-        uint256 amountRIR,
-        uint256 amountBUSD,
-        uint256 amountToken
-    );
-
-    constructor(
+    function initialize(
         address _tokenAddress,
         address _bUSDAddress,
         address _rirAddress,
-    //        uint256 _tokenPrice, // Price Token (Ex: 1 TOKEN = 0.01 BUSD)
-    //        uint256 _tokensForSale,
-    //        uint256 _startDate,
-    //        uint256 _endDate,
-    //        uint256 _individualMinimumAmount,
-    //        uint256 _individualMaximumAmount,
-        bool _hasWhitelisting
-    ) Whitelist(_hasWhitelisting) {
-
+        uint256 _tokenPrice, // Price Token (Ex: 1 TOKEN = 0.01 BUSD)
+        uint256 _bUSDForSale,
+        uint256 _startDate,
+        uint256 _endDate,
+        uint256 _individualMinimumAmountBusd,
+        uint256 _individualMaximumAmountBusd,
+        uint256 _feeTax
+    ) public initializer {
+        __Context_init_unchained();
+        __Ownable_init();
+        __Pausable_init();
         //        require(
         //            block.timestamp < _endDate,
         //            "End Date should be further than current date"
         //        );
-        //
+
         //        require(
         //            block.timestamp < _startDate,
         //            "Start Date should be further than current date"
         //        );
-        //
-        //        require(_startDate < _endDate, "End Date higher than Start Date");
-        //
-        //        require(_tokensForSale > 0, "Tokens for Sale should be > 0");
-        //
-        //        require(
-        //            _tokensForSale > _individualMinimumAmount,
-        //            "Tokens for Sale should be > Individual Minimum Amount"
-        //        );
-        //
-        //        require(
-        //            _individualMaximumAmount >= _individualMinimumAmount,
-        //            "Individual Maximim AMount should be > Individual Minimum Amount"
-        //        );
-        //
-        //        startDate = _startDate;
-        //        endDate = _endDate;
-        //        tokensForSale = _tokensForSale;
-        //        tokenPrice = _tokenPrice;
+
+        require(_startDate < _endDate, "End Date higher than Start Date");
+
+        require(_tokenPrice > 0, "Price token of project should be > 0");
+
+        require(_bUSDForSale > 0, "BUSD for Sale should be > 0");
+
+        require(
+            _individualMinimumAmountBusd > 0,
+            "Individual Minimum Amount Busd should be > 0"
+        );
+
+        require(
+            _individualMaximumAmountBusd > 0,
+            "Individual Maximim Amount Busd should be > 0"
+        );
+
+        require(
+            _individualMaximumAmountBusd >= _individualMinimumAmountBusd,
+            "Individual Maximim Amount should be > Individual Minimum Amount"
+        );
+
+        require(_bUSDForSale >= _individualMinimumAmountBusd);
+
+        startDate = _startDate;
+        endDate = _endDate;
+        bUSDForSale = _bUSDForSale;
+        tokenPrice = _tokenPrice;
+        bUSDAllocated = 0;
+        subscriptionCount = 0;
+        winCount = 0;
+        rate = 100;
+        feeTax = _feeTax;
+        unsoldTokensReedemed = false;
+        isAllowClaim = false;
+        ADDRESS_WITHDRAW = 0x128392d27439F0E76b3612E9B94f5E9C072d74e0;
+        individualMinimumAmountBusd = _individualMinimumAmountBusd;
+        individualMaximumAmountBusd = _individualMaximumAmountBusd;
 
         tokenAddress = ERC20(_tokenAddress);
         bUSDAddress = ERC20(_bUSDAddress);
         rirAddress = ERC20(_rirAddress);
     }
 
-    function getOrder(uint256 _order_id) external view returns (address, uint256, uint256, StatusContract) {
-        Order memory _order = orders[_order_id];
-        return (
-        _order.buyer,
-        _order.amountBUSD,
-        _order.amountToken,
-        _order.status
+    function bUSDLeft() external view returns (uint256) {
+        return bUSDForSale - bUSDAllocated;
+    }
+
+    /**
+     * Get List Subscribers
+     **/
+    function getSubscribers() external view returns (address[] memory) {
+        return subscribers;
+    }
+
+    /**
+     * Get List Winners
+     **/
+    function getWinners() external view returns (address[] memory) {
+        return winners;
+    }
+
+    /**
+     * Get Order Of Subscriber
+     **/
+    function getOrderSubscriber(address _buyer)
+        external
+        view
+        returns (Order memory)
+    {
+        return subscription[_buyer];
+    }
+
+    /**
+     * Get Order Of Winner
+     **/
+    function getOrderWinner(address _buyer)
+        external
+        view
+        returns (Order memory)
+    {
+        return wins[_buyer];
+    }
+
+    /**
+     * Check Buyer is Subscriber
+     **/
+    function isSubscriber(address _buyer) external view returns (bool) {
+        return isBuyerAdded(_buyer, subscribers);
+    }
+
+    /**
+     * Check Buyer is Winner
+     **/
+    function isWinner(address _buyer) external view returns (bool) {
+        return isBuyerAdded(_buyer, winners);
+    }
+
+    /**
+     * Set Wins is empty
+     **/
+    function setEmptyWins() external onlyOwner onlyUnverifyWin {
+        require(winCount > 0);
+        require(winners.length > 0);
+        for (uint256 i = 0; i < winners.length; i++) {
+            address _winner = winners[i];
+            delete wins[_winner];
+        }
+
+        delete winners;
+        delete winCount;
+    }
+
+    /**
+     * Import Winners
+     **/
+    function importWinners(
+        address[] calldata _buyer,
+        uint256[] calldata _approvedBusd
+    ) external onlyOwner winEmpty {
+        uint256 _bUSDAllocated = 0;
+
+        for (uint256 i = 0; i < _buyer.length; i++) {
+            _bUSDAllocated += _approvedBusd[i];
+
+            require(this.isSubscriber(_buyer[i]), "Buyer is not subscriber");
+
+            require(
+                !this.isWinner(_buyer[i]),
+                "Buyer already exists in the list"
+            );
+
+            require(
+                bUSDForSale.sub(_bUSDAllocated) >= 0,
+                "Approved BUSD exceed the amount for sale"
+            );
+
+            require(_approvedBusd[i] > 0, "Amount has to be positive");
+
+            require(
+                _approvedBusd[i] >= individualMinimumAmountBusd,
+                "Individual Minimum Amount Busd"
+            );
+
+            require(
+                _approvedBusd[i] <= individualMaximumAmountBusd,
+                "Individual Maximum Amount Busd"
+            );
+
+            Order memory _wins = Order(0, _approvedBusd[i], 0, address(0));
+
+            wins[_buyer[i]] = _wins;
+
+            winners.push(_buyer[i]);
+
+            winCount += 1;
+        }
+    }
+
+    /*
+    /*
+    not allow modify winners list
+    allow claim
+
+    rquire:
+    // call verify winner list            
+    total sub >= total busd => total win == total busd
+    total sub < total busd => total win == total sub
+    // all subscriber with rir must be in list wins
+
+
+    set status to done
+    */
+    function commitWinners() external payable onlyOwner {
+        require(winners.length > 0);
+
+        uint256 _bUSDAllocated = 0;
+
+        for (uint256 i = 0; i < winners.length; i++) {
+            address _winner = winners[i];
+            _bUSDAllocated += wins[_winner].amountBUSD;
+
+            require(
+                wins[_winner].amountBUSD >= individualMinimumAmountBusd,
+                "Individual Minimum Amount Busd"
+            );
+
+            require(
+                wins[_winner].amountBUSD <= individualMaximumAmountBusd,
+                "Individual Maximum Amount Busd"
+            );
+        }
+
+        require(
+            _bUSDAllocated <= bUSDForSale,
+            "Exceeded the number of tokens sold"
+        );
+
+        require(isAllowClaim = true);
+    }
+
+    function isBuyerHasRIR(address buyer) external view returns (bool) {
+        return rirAddress.balanceOf(buyer) > 0;
+    }
+
+    function createSubscription(
+        uint256 _amountBusd,
+        uint256 _amountRIR,
+        address _referer
+    ) external payable {
+        require(_amountBusd >= 0, "Amount BUSD is not valid");
+
+        require(_amountRIR >= 0, "Amount RIR is not valid");
+
+        require(_amountBusd > 0 || _amountRIR > 0, "Amount is not valid");
+
+        require(
+            individualMaximumAmountBusd >=
+                subscription[msg.sender].amountBUSD + _amountBusd,
+            "Amount is overcome maximum"
+        );
+
+        require(
+            individualMinimumAmountBusd <=
+                subscription[msg.sender].amountBUSD + _amountBusd,
+            "Amount is overcome minimum"
+        );
+
+        // Prevent misunderstanding: only RIR is enough
+        require(
+            subscription[msg.sender].amountRIR.add(_amountRIR).mul(rate) <=
+                subscription[msg.sender].amountBUSD.add(_amountBusd),
+            "Amount is not valid"
+        );
+
+        if (_amountRIR > 0) {
+            require(
+                rirAddress.balanceOf(msg.sender) >= _amountRIR,
+                "You dont have enough RIR Token"
+            );
+
+            require(
+                rirAddress.transferFrom(msg.sender, address(this), _amountRIR),
+                "RIR transfer failed"
+            );
+
+            subscription[msg.sender].amountRIR += _amountRIR;
+        }
+
+        if (_amountBusd > 0) {
+            require(
+                bUSDAddress.balanceOf(msg.sender) >= _amountBusd,
+                "You dont have enough Busd Token"
+            );
+
+            require(
+                bUSDAddress.transferFrom(
+                    msg.sender,
+                    address(this),
+                    _amountBusd
+                ),
+                "Transfer BUSD fail"
+            );
+
+            subscription[msg.sender].amountBUSD += _amountBusd;
+        }
+
+        if (_referer != address(0)) {
+            subscription[msg.sender].referer = _referer;
+        }
+
+        if (!this.isSubscriber(msg.sender)) {
+            subscribers.push(msg.sender);
+            subscriptionCount += 1;
+        }
+
+        emit SubscriptionEvent(
+            _amountRIR,
+            _amountBusd,
+            _referer,
+            msg.sender,
+            block.timestamp
         );
     }
 
-    /* Admin withdraw */
-    function withdrawFunds() external onlyOwner {
+    function isBuyerAdded(address _addr_buyer, address[] memory data)
+        internal
+        pure
+        returns (bool)
+    {
+        uint256 i;
+        while (i < data.length) {
+            if (_addr_buyer == data[i]) {
+                return true;
+            }
+            i++;
+        }
+        return false;
+    }
 
+    // function sync() external payable onlyOwner {
+    //     uint i = 0;
+    //     while (i < subscribers.length) {
+    //         address addrBuyer = subscribers[i];
+
+    //         winners.push(addrBuyer);
+
+    //         if (isBuyerAdded(addrBuyer, winners)) {
+    //             require(subscription[addrBuyer].amountBUSD >= whitelist[addrBuyer].amountBUSD);
+    //             require(subscription[addrBuyer].amountRIR >= whitelist[addrBuyer].amountRIR);
+    //             require(whitelist[addrBuyer].amountBUSD >= individualMinimumAmountBusd);
+    //             require(whitelist[addrBuyer].amountBUSD <= individualMaximumAmountBusd);
+
+    //             wins[addrBuyer].amountRIR = subscription[addrBuyer].amountRIR - whitelist[addrBuyer].amountRIR;
+    //             wins[addrBuyer].amountBUSD = subscription[addrBuyer].amountBUSD - whitelist[addrBuyer].amountBUSD;
+    //             wins[addrBuyer].amountToken = whitelist[addrBuyer].amountToken;
+
+    //             tokensAllocated += wins[addrBuyer].amountToken;
+    //         } else {
+    //             wins[addrBuyer] = subscription[addrBuyer];
+    //             wins[addrBuyer].amountToken = 0;
+    //         }
+    //         i++;
+    //     }
+    // }
+
+    // Claim Token from Wallet Contract
+    function claimToken() external payable {
+        /*
+            Claim 
+            1. If refund available => get back busd
+            refund = sub - win
+
+            2. If token available => get token
+            for each winner: 
+            token claimable = busd win / total busd * total deposited token - token claimed
+
+            function: getClaimableToken of sender
+            return token claimable = busd win / total busd * total deposited token - token claimed
+        */
+
+        uint256 balanceBusd = wins[msg.sender].amountBUSD;
+        // require(
+        //     this.availableBusd() >= balanceBusd,
+        //     "Amount has to be positive"
+        // );
+        // uint256 balanceRIR = wins[msg.sender].amountRIR;
+        // require(this.availableRIR() >= balanceRIR, "Amount has to be positive");
+        // uint256 balanceToken = wins[msg.sender].amountToken;
+        // require(
+        //     this.availableTokens() >= balanceToken,
+        //     "Amount has to be positive"
+        // );
+        // require(
+        //     bUSDAddress.transfer(msg.sender, balanceBusd),
+        //     "ERC20 transfer failed"
+        // );
+        // require(
+        //     rirAddress.transfer(msg.sender, balanceRIR),
+        //     "ERC20 transfer failed"
+        // );
+        // require(
+        //     tokenAddress.transfer(msg.sender, balanceToken),
+        //     "ERC20 transfer failed"
+        // );
+        // delete wins[msg.sender];
+    }
+
+    /* Admin withdraw */
+    /*
+        require: project done (winner list committed)
+        widthdraw busd = total win busd
+
+    */
+    function withdrawBusdFunds() external onlyOwner {
+        // Chi rut phan Busd đã bán
+        // uint256 _balanceBusd = bUSDAddress.balanceOf(address(this));
+        // bUSDAddress.transferFrom(msg.sender, ADDRESS_WITHDRAW, _balanceBusd);
     }
 
     /* Admin withdraw unsold token */
+    /*
+    require all totken send to contract
+    total unsoldtoken = (total busd - total win)/total busd * total token in contract
+    */
     function withdrawUnsoldTokens() external onlyOwner {
-
+        // Chi rut phan token chưa bán
+        require(!unsoldTokensReedemed);
+        // uint256 unsoldTokens;
+        // unsoldTokens = tokensForSale.sub(tokensAllocated);
+        // if (unsoldTokens > 0) {
+        //     unsoldTokensReedemed = true;
+        //     require(
+        //         tokenAddress.transfer(ADDRESS_WITHDRAW, unsoldTokens),
+        //         "ERC20 transfer failed"
+        //     );
+        // }
     }
 
-    function isBuyerHasPermissionBuy(address buyer) external view returns (bool) {
-        require(rirAddress.balanceOf(buyer) > 0, "Buyer dont have permission buy token");
-        return true;
+    function balanceTokens() external view returns (uint256) {
+        return tokenAddress.balanceOf(address(this));
     }
 
-    function checkBuyerCanBuy(address buyer) external view returns (bool){
-        uint256 rirAmount = rirAddress.balanceOf(msg.sender);
-        uint256 busdAmount = bUSDAddress.balanceOf(msg.sender);
-        bool canBuyToken = rirAmount.mul(100) <= busdAmount;
-        bool hasRir = rirAmount > 0;
-        bool hasBusd = busdAmount > 0;
-        return canBuyToken && hasRir && hasBusd;
+    function balanceBusd() external view returns (uint256) {
+        return bUSDAddress.balanceOf(address(this));
     }
 
+    function balanceRIR() external view returns (uint256) {
+        return rirAddress.balanceOf(address(this));
+    }
 
-    /* Swap Functions */
-    function swap(uint256 _amount) external {
-
+    function removeOtherERC20Tokens(address _tokenAddress, address _to)
+        external
+        onlyOwner
+    {
+        require(
+            _tokenAddress != address(tokenAddress),
+            "Token Address has to be diff than the erc20 subject to sale"
+        );
+        // Confirm tokens addresses are different from main sale one
+        ERC20 erc20Token = ERC20(_tokenAddress);
+        require(
+            erc20Token.transfer(_to, erc20Token.balanceOf(address(this))),
+            "ERC20 Token transfer failed"
+        );
     }
 }

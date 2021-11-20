@@ -2,9 +2,12 @@ import "@openzeppelin/hardhat-upgrades";
 import "@nomiclabs/hardhat-etherscan";
 import {task} from "hardhat/config";
 import "@nomiclabs/hardhat-waffle";
+import { config } from "dotenv";
 
-const mnemonic = "";
-const bscscanApiKey = "";
+config({ path: '.env'});
+
+const mnemonic = process.env.MNEMONIC;
+const bscscanApiKey = process.env.BSCSCANAPIKEY;
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
