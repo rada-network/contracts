@@ -6,7 +6,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/presets/ERC20PresetMinte
 contract RIRContract is ERC20PresetMinterPauserUpgradeable {
 
     function initialize(string memory name, string memory symbol) override public {
-        ERC20PresetMinterPauserUpgradeable.__ERC20PresetMinterPauser_init(name, symbol);
+        initialize(name, symbol);
     }
 
 }
