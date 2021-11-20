@@ -20,8 +20,12 @@ contract LaunchPad is
     struct Order {
         uint256 amountRIR;
         uint256 amountBUSD;
-        uint256 amountToken;
         address referer;
+    }
+
+    struct Wallet {
+        mapping(uint256 => uint256) amountToken;
+        uint256 amountBUSD;
     }
 
     mapping(address => Order) public subscription;
@@ -32,9 +36,11 @@ contract LaunchPad is
     uint256 public winCount;
     address[] public winners;
 
-    mapping(address => Order) public wallets;
+    mapping(address => Wallet) public wallets;
     uint256 public buyersCount;
     address[] public buyers;
+
+    mapping(uint256 => uint256) public depositTokens;
 
     event SubscriptionEvent(
         uint256 amountRIR,
@@ -250,7 +256,7 @@ contract LaunchPad is
                 "Individual Maximum Amount Busd"
             );
 
-            Order memory _wins = Order(0, _approvedBusd[i], 0, address(0));
+            Order memory _wins = Order(0, _approvedBusd[i], address(0));
 
             wins[_buyer[i]] = _wins;
 
@@ -488,12 +494,7 @@ contract LaunchPad is
     //     }
     // }
 
-    /* Admin withdraw */
-    /*
-        require: project done (winner list committed)
-        widthdraw busd = total win busd
-
-    */
+    /* Admin Withdraw BUSD */
     function withdrawBusdFunds() external onlyOwner onlyCommit {
         uint256 _balanceBusd = getTotalBusdWinners();
         bUSDAddress.transfer(ADDRESS_WITHDRAW, _balanceBusd);
