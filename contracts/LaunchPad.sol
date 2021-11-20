@@ -21,6 +21,7 @@ contract LaunchPad is
         uint256 amountRIR;
         uint256 amountBUSD;
         uint256 amountToken;
+        /*address referer;*/
     }
 
     mapping(address => Order) public subscription;
@@ -185,12 +186,28 @@ contract LaunchPad is
 
     /**
      * Import White List
+     * => Import winners list
      **/
     function importWhitelist(
         address[] calldata _buyer,
         uint256[] calldata _amountToken,
         bool[] calldata isRir
     ) external onlyOwner whitelistEmpty {
+
+        /*
+            Input:
+            address[] _buyers
+            uint256[] _approvedBusd (busd)
+
+            Require:
+            _buyers subset of subscribers
+            sum(_approvedBusd) <= totalBusd <= ....
+            _approvedBusd[buyer] <= subscription[buyer] <= for each buyer in _buyers
+
+            // all buyer with rir must be in list _buyers
+            
+        */
+
         uint256 _tokensAllocated = 0;
 
         for (uint256 i = 0; i < _buyer.length; i++) {
@@ -234,7 +251,7 @@ contract LaunchPad is
                 "Individual Maximum Amount Busd"
             );
 
-            Order memory _whitelist = Order(
+            Order memory _whitelist = Order (
                 _amount_rir,
                 _amount_busd,
                 _amountToken[i]
@@ -248,6 +265,29 @@ contract LaunchPad is
         }
     }
 
+
+    /* 
+    */
+    function commitWinners() external onlyOwner {
+        /*
+            not allow modify winners list
+            allow claim
+
+            rquire:
+            // call verify winner list            
+            total sub >= total busd => total win == total busd
+            total sub < total busd => total win == total sub
+
+
+            set status to done
+        */
+    }
+
+
+
+
+    /*
+    */
     function verifyWhitelist() external payable onlyOwner {
         require(buyerWhitelists.length > 0);
 
@@ -280,10 +320,35 @@ contract LaunchPad is
         return rirAddress.balanceOf(buyer) > 0;
     }
 
-    function createSubscription(uint256 _amountBusd, uint256 _amountRIR)
+    function createSubscription(uint256 _amountBusd, uint256 _amountRIR/*, address _referer*/)
         external
         payable
     {
+
+
+        /*
+        input:
+        busd, rir, referer
+
+        Require:
+        _amountBusd >= 0
+        _amountRIR >= 0
+        _amountBusd > 0 || _amountRIR > 0
+        individualMinimumAmountBusd <= subscription[msg.sender].amountBusd + _amountBusd <= individualMinimumAmountBusd
+
+        // => prevent misunderstanding: only RIR is enough
+        (subscription[msg.sender].amountRIR + _amountRIR) * rateRIR <= subscription[msg.sender].amountBusd + _amountBusd
+        => Msg: Need to fund BUSD 
+
+
+        if (_amountBusd > 0) {
+            transfer Busd and add to subscription
+        }
+        if (_amountRIR > 0) {
+            transfer RIR and add to subscription
+        }
+        */
+
         require(_amountBusd > 0, "Amount BUSD has to be positive");
 
         require(_amountRIR > 0, "Amount RIR has to be positive");
@@ -378,6 +443,21 @@ contract LaunchPad is
 
     // Claim Token from Wallet Contract
     function claimToken() external payable {
+
+        /*
+            Claim 
+            1. If refund available => get back busd
+            refund = sub - win
+
+            2. If token available => get token
+            for each winner: 
+            token claimable = busd win / total busd * total deposited token - token claimed
+
+            function: getClaimableToken of sender
+            return token claimable = busd win / total busd * total deposited token - token claimed
+        */
+
+
         uint256 balanceBusd = wins[msg.sender].amountBUSD;
         require(
             this.availableBusd() >= balanceBusd,
@@ -406,13 +486,23 @@ contract LaunchPad is
     }
 
     /* Admin withdraw */
+    /*
+        require: project done (winner list committed)
+        widthdraw busd = total win busd
+
+    */
     function withdrawBusdFunds() external onlyOwner {
+
         // Chi rut phan Busd đã bán
         uint256 balanceBusd = bUSDAddress.balanceOf(address(this));
         bUSDAddress.transferFrom(msg.sender, ADDRESS_WITHDRAW, balanceBusd);
     }
 
     /* Admin withdraw unsold token */
+    /*
+    require all totken send to contract
+    total unsoldtoken = (total busd - total win)/total busd * total token in contract
+    */
     function withdrawUnsoldTokens() external onlyOwner {
         // Chi rut phan token chưa bán
         require(!unsoldTokensReedemed);
