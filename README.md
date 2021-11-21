@@ -33,5 +33,5 @@ npx hardhat verify --network testnet ADDRESS_LAUNCHPAD
 
 Test
 ```
-npx hardhat test --network testnet test
+npx hardhat test test/**
 ```
