@@ -20,7 +20,7 @@ npx hardhat run scripts/1_deploy_rir_token.ts --network testnet
 ```
 Verify RIR
 ```
-npx hardhat verify --network testnet **ADDRESS_TOKEN_RIR**
+npx hardhat verify --network testnet ADDRESS_TOKEN_RIR
 ```
 LaunchPad Token
 ```
@@ -28,5 +28,10 @@ npx hardhat run scripts/2_deloy_launchpad.ts --network testnet
 ```
 Verify LaunchPad
 ```
-npx hardhat verify --network testnet **ADDRESS_LAUNCHPAD**
+npx hardhat verify --network testnet ADDRESS_LAUNCHPAD
+```
+
+Test
+```
+npx hardhat test --network testnet test
 ```

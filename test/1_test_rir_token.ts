@@ -1,6 +1,5 @@
 import {expect} from "chai";
 import {BigNumber} from "ethers";
-// @ts-ignore
 import {ethers, upgrades} from "hardhat"
 
 describe("Deploy", function () {
