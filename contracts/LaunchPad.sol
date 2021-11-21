@@ -40,7 +40,7 @@ contract LaunchPad is
     uint256 public buyersCount;
     address[] public buyers;
 
-    mapping(uint256 => uint256) public depositTokens;
+    uint256[] public depositTokens;
 
     event SubscriptionEvent(
         uint256 amountRIR,
@@ -266,7 +266,7 @@ contract LaunchPad is
     }
 
     function commitWinners() external payable onlyOwner onlyUncommit {
-        require(winners.length > 0,"aaaaaaa");
+        require(winners.length > 0, "aaaaaaa");
 
         require(verifySubWinnerHasRIR(), "Winner dont have in winners list");
 
@@ -290,10 +290,7 @@ contract LaunchPad is
             _bUSDAllocatedWins += wins[_winner].amountBUSD;
         }
 
-        require(
-            _bUSDAllocatedWins == _bUSDForSale,
-            "Exceeded the number of tokens sold"
-        );
+        require(_bUSDAllocatedWins == _bUSDForSale, "You need to check again");
 
         require(isCommit = true);
     }
@@ -302,8 +299,11 @@ contract LaunchPad is
         bool _isVerify = true;
         for (uint256 i = 0; i < subscribers.length; i++) {
             address _subscriber = subscribers[i];
-            if (!this.isWinner(_subscriber)) {
-                _isVerify = false;
+            Order memory _order = subscription[_subscriber];
+            if (_order.amountRIR > 0) {
+                if (!this.isWinner(_subscriber)) {
+                    _isVerify = false;
+                }
             }
         }
         return _isVerify;
@@ -409,8 +409,15 @@ contract LaunchPad is
         return false;
     }
 
+    // Deposit Token
+    function deposit(uint256 _amount) external payable {
+        require(_amount > 0, "Amount has to be positive");
+        require(tokenAddress.transferFrom(msg.sender, address(this), _amount),"Transfer failed");
+        depositTokens.push(_amount);
+    }
+
     // Claim Token from Wallet Contract
-    function claimToken() external payable {
+    function claimToken() external payable onlyCommit {
         /*
             Claim 
             1. If refund available => get back busd
@@ -508,9 +515,7 @@ contract LaunchPad is
         return _totalBusdSold;
     }
 
-    function getTotalUnsoldTokens() internal view returns (uint256) {
-
-    }
+    function getTotalUnsoldTokens() internal view returns (uint256) {}
 
     /* Admin withdraw unsold token */
     /*
@@ -549,6 +554,11 @@ contract LaunchPad is
     {
         require(
             _tokenAddress != address(tokenAddress),
+            "Token Address has to be diff than the erc20 subject to sale"
+        );
+
+        require(
+            _tokenAddress != address(rirAddress),
             "Token Address has to be diff than the erc20 subject to sale"
         );
         // Confirm tokens addresses are different from main sale one

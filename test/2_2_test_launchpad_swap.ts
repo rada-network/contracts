@@ -261,8 +261,8 @@ describe("LaunchPad", async function () {
                                 expect(winners.length).to.equal(0);
 
                                 await launchPadContract.connect(owner).importWinners(
-                                    [addr1.address],
-                                    [utils.parseEther("100")]
+                                    [addr1.address,addr2.address],
+                                    [utils.parseEther("500"),utils.parseEther("200")]
                                 );
 
                             })
@@ -272,6 +272,8 @@ describe("LaunchPad", async function () {
                         describe("Commit Winners", () => {
                             it('Commit', async function () {
                                 await launchPadContract.connect(owner).commitWinners();
+
+                                await launchPadContract.connect(owner).setEmptyWins();
                             })
                         })
 
