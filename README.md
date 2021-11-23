@@ -22,6 +22,15 @@ Verify RIR
 ```
 npx hardhat verify --network testnet ADDRESS_TOKEN_RIR
 ```
+Upgrade RIR
+```
+npx hardhat run scripts/1_upgrade_rir_token.ts --network testnet
+```
+
+
+
+
+
 LaunchPad Token
 ```
 npx hardhat run scripts/2_deloy_launchpad.ts --network testnet

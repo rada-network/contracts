@@ -8,8 +8,9 @@ import {ethers, upgrades} from "hardhat";
 
 async function main() {
     const RIRContract = await ethers.getContractFactory("RIRContract");
-    console.log("Deploying token...");
-    const token = await upgrades.deployProxy(RIRContract, ["RADA Investment Right", "RIR"], {unsafeAllowCustomTypes: true});
+    console.log("Deploying upgrade token...");
+    const token = await upgrades.upgradeProxy(process.env.RIR_ADDRESS, RIRContract);
+    // const token = await upgrades.upgradeProxy("0xF73DCe0c40314d12296228f51fD65f184274bBEd", RIRContract);
     console.log("Token deployed to:", token.address);
 }
 

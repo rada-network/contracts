@@ -4,7 +4,7 @@ import {task} from "hardhat/config";
 import "@nomiclabs/hardhat-waffle";
 import { config } from "dotenv";
 
-config({ path: '.env'});
+config({ path: process.argv.includes('mainnet') ? '.env.mainnet' : '.env'});
 
 const mnemonic = process.env.MNEMONIC;
 const bscscanApiKey = process.env.BSCSCANAPIKEY;
