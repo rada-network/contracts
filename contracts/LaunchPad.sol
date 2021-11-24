@@ -348,7 +348,7 @@ contract LaunchPad is
             );
 
             // Prevent misunderstanding: only RIR is enough
-            require(_amountRIR.mul(rate) <= _amountBusd, "Amount is not valid");
+            require(_amountRIR.mul(rate) <= subscription[msg.sender].amountBUSD + _amountBusd, "Amount is not valid");
 
             require(
                 rirAddress.transferFrom(msg.sender, address(this), _amountRIR),
