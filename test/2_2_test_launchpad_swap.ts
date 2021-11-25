@@ -79,9 +79,9 @@ describe("LaunchPad", async function () {
         // console.log('LaunchPad Contract: ', launchPadAddress);
 
         // Mint token of project to launchPad
-        await tokenContract.mint(launchPadAddress, utils.parseEther("1000000"));
-        const launchPadTokenAmount = await tokenContract.balanceOf(launchPadAddress);
-        expect(utils.formatEther(launchPadTokenAmount)).to.equal("1000000.0");
+        // await tokenContract.mint(launchPadAddress, utils.parseEther("1000000"));
+        // const launchPadTokenAmount = await tokenContract.balanceOf(launchPadAddress);
+        // expect(utils.formatEther(launchPadTokenAmount)).to.equal("1000000.0");
     });
 
     describe("Test Buyer Have RIR", () => {
@@ -148,7 +148,7 @@ describe("LaunchPad", async function () {
             expect(utils.formatEther(addr1_RIRAmount)).to.equal("8.0");
             expect(utils.formatEther(addr1_tokenAmount)).to.equal("0.0");
 
-            await expect(launchPadContract.connect(addr1).createSubscription(utils.parseEther("300"), utils.parseEther("5"), addr4.address)).to.revertedWith('Amount is not valid');
+            await expect(launchPadContract.connect(addr1).createSubscription(utils.parseEther("200"), utils.parseEther("5"), addr4.address)).to.revertedWith('Amount is not valid');
 
             await launchPadContract.connect(addr1).createSubscription(utils.parseEther("300"), utils.parseEther("0"), addr4.address);
 
@@ -261,8 +261,8 @@ describe("LaunchPad", async function () {
                                 expect(winners.length).to.equal(0);
 
                                 await launchPadContract.connect(owner).importWinners(
-                                    [addr1.address,addr2.address],
-                                    [utils.parseEther("500"),utils.parseEther("200")]
+                                    [addr1.address, addr2.address],
+                                    [utils.parseEther("500"), utils.parseEther("200")]
                                 );
 
                             })
@@ -273,7 +273,32 @@ describe("LaunchPad", async function () {
                             it('Commit', async function () {
                                 await launchPadContract.connect(owner).commitWinners();
 
-                                await launchPadContract.connect(owner).setEmptyWins();
+                                describe("Deposit Token", async () => {
+                                    it('Deposit Success', async () => {
+                                        let owner_tokenAmount = await tokenContract.balanceOf(owner.address);
+                                        expect(utils.formatEther(owner_tokenAmount)).to.equal("0.0");
+                                        await tokenContract.mint(owner.address, utils.parseEther("1000000"));
+                                        owner_tokenAmount = await tokenContract.balanceOf(owner.address);
+                                        expect(utils.formatEther(owner_tokenAmount)).to.equal("1000000.0");
+                                        let launchPadContract_tokenAmount = await tokenContract.balanceOf(launchPadContract.address);
+                                        expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("0.0");
+
+                                        await tokenContract.approve(launchPadContract.address, constants.MaxUint256);
+                                        await launchPadContract.deposit(utils.parseEther("1000"));
+                                        launchPadContract_tokenAmount = await tokenContract.balanceOf(launchPadContract.address);
+                                        expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("1000.0");
+
+                                        let tokenDeposit = await launchPadContract.depositTokens(0);
+                                        expect(utils.formatEther(tokenDeposit)).to.equal("1000.0");
+
+                                        await launchPadContract.deposit(utils.parseEther("2000"));
+                                        tokenDeposit = await launchPadContract.depositTokens(1);
+                                        expect(utils.formatEther(tokenDeposit)).to.equal("2000.0");
+                                        launchPadContract_tokenAmount = await tokenContract.balanceOf(launchPadContract.address);
+                                        expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("3000.0");
+
+                                    })
+                                })
                             })
                         })
 
