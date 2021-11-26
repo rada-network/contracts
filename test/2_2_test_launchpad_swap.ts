@@ -308,6 +308,23 @@ describe("LaunchPad", async function () {
                                         expect(utils.formatEther(wallet_addr2[0][0])).to.equal("20.0");
                                         expect(utils.formatEther(wallet_addr2[0][1])).to.equal("180.0");
 
+                                        let addr2_claimBusd = launchPadContract.connect(addr2).claimBusd();
+                                        await expect(addr2_claimBusd).to.reverted;
+
+                                        await launchPadContract.connect(addr2).claimToken(0);
+                                        let addr2_tokenAmount = await tokenContract.balanceOf(addr2.address);
+                                        expect(utils.formatEther(addr2_tokenAmount)).to.equal("20.0")
+                                        launchPadContract_tokenAmount = await tokenContract.balanceOf(launchPadContract.address);
+                                        expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("800080.0")
+
+                                        await launchPadContract.connect(addr2).claimToken(1);
+                                        addr2_tokenAmount = await tokenContract.balanceOf(addr2.address);
+                                        expect(utils.formatEther(addr2_tokenAmount)).to.equal("200.0")
+                                        launchPadContract_tokenAmount = await tokenContract.balanceOf(launchPadContract.address);
+                                        expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("799900.0")
+
+                                        wallet_addr1 = await launchPadContract.getWalletBuyer(addr1.address);
+                                        console.log(wallet_addr1)
                                     })
                                 })
                             })
