@@ -449,7 +449,7 @@ OwnableUpgradeable
     }
 
     // Claim Token from Wallet Contract
-    //    function claimToken() external payable onlyCommit {
+        function claimToken() external payable onlyCommit {
     //        /*
     //            Claim
     //            1. If refund available => get back busd
@@ -488,7 +488,7 @@ OwnableUpgradeable
     //        //     "ERC20 transfer failed"
     //        // );
     //        // delete wins[msg.sender];
-    //    }
+        }
 
     function sync(uint256 _amount) internal {
         uint256 i = 0;
