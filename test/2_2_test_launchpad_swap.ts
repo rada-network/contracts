@@ -292,22 +292,21 @@ describe("LaunchPad", async function () {
                                         expect(utils.formatEther(tokenDeposit)).to.equal("100.0");
 
                                         let wallet_addr1 = await launchPadContract.getWalletBuyer(addr1.address);
-                                        console.log('wallet',wallet_addr1);
-                                        console.log('wallet',utils.formatEther(wallet_addr1[0][0]));
+                                        expect(utils.formatEther(wallet_addr1[0][0])).to.equal("50.0");
 
-                                        // await launchPadContract.deposit(utils.parseEther("800000"));
-                                        // tokenDeposit = await launchPadContract.depositTokens(1);
-                                        // expect(utils.formatEther(tokenDeposit)).to.equal("800000.0");
-                                        // launchPadContract_tokenAmount = await tokenContract.balanceOf(launchPadContract.address);
-                                        // expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("800100.0");
+                                        await launchPadContract.deposit(utils.parseEther("800000"));
+                                        tokenDeposit = await launchPadContract.depositTokens(1);
+                                        expect(utils.formatEther(tokenDeposit)).to.equal("800000.0");
+                                        launchPadContract_tokenAmount = await tokenContract.balanceOf(launchPadContract.address);
+                                        expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("800100.0");
 
                                         wallet_addr1 = await launchPadContract.getWalletBuyer(addr1.address);
-                                        console.log('wallet',utils.formatEther(wallet_addr1[0][0]));
-                                        // let winner_addr1 = await launchPadContract.getOrderWinner(addr1.address);
-                                        // console.log('winner',winner_addr1);
-                                        // let subscriber_addr1 = await launchPadContract.getOrderSubscriber(addr1.address);
-                                        // console.log('subscriber',subscriber_addr1);
+                                        expect(utils.formatEther(wallet_addr1[0][1])).to.equal("450.0");
 
+                                        // Addr 2
+                                        let wallet_addr2 = await launchPadContract.getWalletBuyer(addr2.address);
+                                        expect(utils.formatEther(wallet_addr2[0][0])).to.equal("20.0");
+                                        expect(utils.formatEther(wallet_addr2[0][1])).to.equal("180.0");
 
                                     })
                                 })

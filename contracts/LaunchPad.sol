@@ -501,11 +501,13 @@ OwnableUpgradeable
                 _buyerWallet.amountBUSD = subscription[_buyer].amountBUSD - wins[_buyer].amountBUSD;
             }
             uint256 _amountBUSDDeposite = _amount.mul(tokenPrice.div(1e18));
-            // Token Receive = busd wins * ( _deposit busd / total busd) / tokenPrice
-            uint256 tokenReceive = _amountBUSDDeposite.div(bUSDForSale).div(tokenPrice.div(1e18)).mul(wins[_buyer].amountBUSD);
+
+            // Token Receive = busd wins * _deposit busd / total busd / tokenPrice
+            uint256 tokenReceive = wins[_buyer].amountBUSD.mul(_amountBUSDDeposite).div(bUSDForSale).div(tokenPrice).mul(1e18);
 
             uint256 _totalBusdWillReceive = getTotalBusdWillReceive(_buyer, tokenReceive);
 
+            // Add Token to Wallet
             if (_totalBusdWillReceive <= wins[_buyer].amountBUSD) {
                 _buyerWallet.amountToken.push(tokenReceive);
             } else {
