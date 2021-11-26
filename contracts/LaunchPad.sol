@@ -10,10 +10,10 @@ import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 contract LaunchPad is
-    Initializable,
-    ContextUpgradeable,
-    PausableUpgradeable,
-    OwnableUpgradeable
+Initializable,
+ContextUpgradeable,
+PausableUpgradeable,
+OwnableUpgradeable
 {
     using SafeMathUpgradeable for uint256;
 
@@ -24,7 +24,7 @@ contract LaunchPad is
     }
 
     struct Wallet {
-        mapping(uint256 => uint256) amountToken;
+        uint256[] amountToken;
         uint256 amountBUSD;
     }
 
@@ -41,6 +41,12 @@ contract LaunchPad is
     address[] public buyers;
 
     uint256[] public depositTokens;
+
+    event DepositEvent(
+        uint256 amount,
+        address indexed depositor,
+        uint256 timestamp
+    );
 
     event SubscriptionEvent(
         uint256 amountRIR,
@@ -68,7 +74,7 @@ contract LaunchPad is
 
     bool public isCommit;
     uint256 public startDate; /* Start Date  - https://www.epochconverter.com/ */
-    uint256 public endDate; /* End Date  */
+    uint256 public endDate; /* End Date - https://www.epochconverter.com/ */
     uint256 public individualMinimumAmountBusd; /* Minimum Amount Per Address */
     uint256 public individualMaximumAmountBusd; /* Minimum Amount Per Address */
     uint256 public tokenPrice; /* Gia token theo USD */
@@ -172,9 +178,9 @@ contract LaunchPad is
      * Get Order Of Subscriber
      **/
     function getOrderSubscriber(address _buyer)
-        external
-        view
-        returns (Order memory)
+    external
+    view
+    returns (Order memory)
     {
         return subscription[_buyer];
     }
@@ -183,11 +189,22 @@ contract LaunchPad is
      * Get Order Of Winner
      **/
     function getOrderWinner(address _buyer)
-        external
-        view
-        returns (Order memory)
+    external
+    view
+    returns (Order memory)
     {
         return wins[_buyer];
+    }
+
+    /**
+     * Get Wallet Of Buyer
+     **/
+    function getWalletBuyer(address _buyer)
+    external
+    view
+    returns (Wallet memory)
+    {
+        return wallets[_buyer];
     }
 
     /**
@@ -202,6 +219,13 @@ contract LaunchPad is
      **/
     function isWinner(address _buyer) external view returns (bool) {
         return isBuyerAdded(_buyer, winners);
+    }
+
+    /**
+     * Check Buyer is Buyers
+     **/
+    function isBuyer(address _buyer) external view returns (bool) {
+        return isBuyerAdded(_buyer, buyers);
     }
 
     /**
@@ -266,7 +290,7 @@ contract LaunchPad is
     }
 
     function commitWinners() external payable onlyOwner onlyUncommit {
-        require(winners.length > 0, "aaaaaaa");
+        require(winners.length > 0, "You need import winners");
 
         require(verifySubWinnerHasRIR(), "Winner dont have in winners list");
 
@@ -326,13 +350,13 @@ contract LaunchPad is
 
         require(
             individualMaximumAmountBusd >=
-                subscription[msg.sender].amountBUSD + _amountBusd,
+            subscription[msg.sender].amountBUSD + _amountBusd,
             "Amount is overcome maximum"
         );
 
         require(
             individualMinimumAmountBusd <=
-                subscription[msg.sender].amountBUSD + _amountBusd,
+            subscription[msg.sender].amountBUSD + _amountBusd,
             "Amount is overcome minimum"
         );
 
@@ -395,9 +419,9 @@ contract LaunchPad is
     }
 
     function isBuyerAdded(address _addr_buyer, address[] memory data)
-        internal
-        pure
-        returns (bool)
+    internal
+    pure
+    returns (bool)
     {
         uint256 i;
         while (i < data.length) {
@@ -409,11 +433,19 @@ contract LaunchPad is
         return false;
     }
 
-    // Deposit Token
-    function deposit(uint256 _amount) external payable {
+    /*
+    /* Deposit Token
+    */
+    function deposit(uint256 _amount) external payable onlyCommit onlyOwner {
         require(_amount > 0, "Amount has to be positive");
-        require(tokenAddress.transferFrom(msg.sender, address(this), _amount),"Transfer failed");
+        require(
+            tokenAddress.transferFrom(msg.sender, address(this), _amount),
+            "Transfer failed"
+        );
         depositTokens.push(_amount);
+        sync(_amount);
+
+        emit DepositEvent(_amount, msg.sender, block.timestamp);
     }
 
     // Claim Token from Wallet Contract
@@ -458,47 +490,60 @@ contract LaunchPad is
         // delete wins[msg.sender];
     }
 
-    // function sync() internal payable onlyOwner {
-    //     uint256 i = 0;
-    //     while (i < subscribers.length) {
-    //         address addrBuyer = subscribers[i];
+    function sync(uint256 _amount) internal {
+        uint256 i = 0;
+        while (i < subscribers.length) {
+            address _buyer = subscribers[i];
+            if (!this.isBuyer(_buyer)) {
+                Wallet storage _buyerWallet = wallets[_buyer];
 
-    //         winners.push(addrBuyer);
+                // Tinh toan refund BUSD
+                if (subscription[_buyer].amountBUSD > wins[_buyer].amountBUSD && _buyerWallet.amountBUSD == 0) {
+                    _buyerWallet.amountBUSD = subscription[_buyer].amountBUSD - wins[_buyer].amountBUSD;
+                }
+                uint256 _amountBUSDDeposite = _amount.mul(tokenPrice);
+                // Token Receive = busd wins * ( _deposit busd / total busd *100) / tokenPrice
+                uint256 tokenReceive = wins[_buyer].amountBUSD.mul(_amountBUSDDeposite).div(bUSDForSale).div(tokenPrice).mul(100);
 
-    //         if (isBuyerAdded(addrBuyer, winners)) {
-    //             require(
-    //                 subscription[addrBuyer].amountBUSD >=
-    //                     whitelist[addrBuyer].amountBUSD
-    //             );
-    //             require(
-    //                 subscription[addrBuyer].amountRIR >=
-    //                     whitelist[addrBuyer].amountRIR
-    //             );
-    //             require(
-    //                 whitelist[addrBuyer].amountBUSD >=
-    //                     individualMinimumAmountBusd
-    //             );
-    //             require(
-    //                 whitelist[addrBuyer].amountBUSD <=
-    //                     individualMaximumAmountBusd
-    //             );
+                uint256 _totalBusdWillReceive = getTotalBusdWillReceive(_buyer, tokenReceive);
 
-    //             wins[addrBuyer].amountRIR =
-    //                 subscription[addrBuyer].amountRIR -
-    //                 whitelist[addrBuyer].amountRIR;
-    //             wins[addrBuyer].amountBUSD =
-    //                 subscription[addrBuyer].amountBUSD -
-    //                 whitelist[addrBuyer].amountBUSD;
-    //             wins[addrBuyer].amountToken = whitelist[addrBuyer].amountToken;
+                if (_totalBusdWillReceive <= wins[_buyer].amountBUSD) {
+                    _buyerWallet.amountToken.push(tokenReceive);
+                } else {
+                    uint256 _bUSDRemain = wins[_buyer].amountBUSD - getTotalBusdReceived(_buyer);
+                    tokenReceive = _bUSDRemain.div(tokenPrice);
+                    _buyerWallet.amountToken.push(tokenReceive);
+                }
 
-    //             tokensAllocated += wins[addrBuyer].amountToken;
-    //         } else {
-    //             wins[addrBuyer] = subscription[addrBuyer];
-    //             wins[addrBuyer].amountToken = 0;
-    //         }
-    //         i++;
-    //     }
-    // }
+                buyers.push(_buyer);
+                buyersCount++;
+            }
+            i++;
+        }
+    }
+
+    function getTotalBusdWillReceive(address _buyer, uint256 _tokenReceive) internal returns (uint256) {
+        Wallet memory _wallet = wallets[_buyer];
+        uint256[] memory _amountToken = _wallet.amountToken;
+        uint256 _totalTokenReceived = 0;
+        for (uint i = 0; i < _amountToken.length; i++) {
+            _totalTokenReceived += _amountToken[i];
+        }
+        _totalTokenReceived += _tokenReceive;
+        uint256 _totalBusdWillReceived = _totalTokenReceived.div(tokenPrice);
+        return _totalBusdWillReceived;
+    }
+
+    function getTotalBusdReceived(address _buyer) internal returns (uint256) {
+        Wallet memory _wallet = wallets[_buyer];
+        uint256[] memory _amountToken = _wallet.amountToken;
+        uint256 _totalTokenReceived = 0;
+        for (uint i = 0; i < _amountToken.length; i++) {
+            _totalTokenReceived += _amountToken[i];
+        }
+        uint256 _totalBusdReceived = _totalTokenReceived.div(tokenPrice);
+        return _totalBusdReceived;
+    }
 
     /* Admin Withdraw BUSD */
     function withdrawBusdFunds() external onlyOwner onlyCommit {
@@ -549,8 +594,8 @@ contract LaunchPad is
     }
 
     function removeOtherERC20Tokens(address _tokenAddress, address _to)
-        external
-        onlyOwner
+    external
+    onlyOwner
     {
         require(
             _tokenAddress != address(tokenAddress),
