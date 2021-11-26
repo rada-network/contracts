@@ -371,30 +371,4 @@ describe("LaunchPad", async function () {
 
     })
 
-    // it("Withdraw bUSD", async () => {
-    //     await rirContract.mint(addr1.address, utils.parseEther("10"));
-    //     await bUSDContract.mint(addr1.address, utils.parseEther("1000"));
-    //     await rirContract.connect(addr1).approve(launchPadContract.address, constants.MaxUint256);
-    //     await bUSDContract.connect(addr1).approve(launchPadContract.address, constants.MaxUint256);
-    //     await launchPadContract.connect(addr1).createSubscription(utils.parseEther("100"), utils.parseEther("1"), addr4.address);
-
-    //     await rirContract.mint(addr2.address, utils.parseEther("10"));
-    //     await bUSDContract.mint(addr2.address, utils.parseEther("1000"));
-    //     await rirContract.connect(addr2).approve(launchPadContract.address, constants.MaxUint256);
-    //     await bUSDContract.connect(addr2).approve(launchPadContract.address, constants.MaxUint256);
-    //     await launchPadContract.connect(addr2).createSubscription(utils.parseEther("500"), utils.parseEther("5"), addr4.address);
-
-    //     await launchPadContract.connect(owner).importWinners(
-    //         [addr1.address, addr2.address],
-    //         [utils.parseEther("100"), utils.parseEther("500")]
-    //     );
-    //     await launchPadContract.connect(owner).commitWinners();
-
-    //     await launchPadContract.withdrawBusdFunds();
-    //     let launchPadContract_bUSDAmount = await bUSDContract.balanceOf(launchPadContract.address);
-    //     expect(utils.formatEther(launchPadContract_bUSDAmount)).to.equal("0.0");
-
-    //     let addrWithdraw_bUSDAmount = await bUSDContract.balanceOf("0xdDDDbebEAD284030Ba1A59cCD99cE34e6d5f4C96");
-    //     expect(utils.formatEther(addrWithdraw_bUSDAmount)).to.equal("600.0");
-    // })
 });

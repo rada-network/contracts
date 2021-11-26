@@ -246,7 +246,7 @@ contract LaunchPad is
     function importWinners(
         address[] calldata _buyer,
         uint256[] calldata _approvedBusd
-    ) external onlyOwner winEmpty {
+    ) external virtual onlyOwner winEmpty {
         uint256 _bUSDAllocated = 0;
 
         for (uint256 i = 0; i < _buyer.length; i++) {
@@ -286,7 +286,7 @@ contract LaunchPad is
         }
     }
 
-    function commitWinners() external payable onlyOwner onlyUncommit {
+    function commitWinners() external payable virtual onlyOwner onlyUncommit {
         require(winners.length > 0, "You need import winners");
 
         require(verifySubWinnerHasRIR(), "Winner dont have in winners list");
@@ -348,7 +348,7 @@ contract LaunchPad is
         uint256 _amountBusd,
         uint256 _amountRIR,
         address _referer
-    ) external payable {
+    ) external payable virtual {
         require(_amountBusd >= 0, "Amount BUSD is not valid");
 
         require(_amountRIR >= 0, "Amount RIR is not valid");
@@ -459,7 +459,7 @@ contract LaunchPad is
         emit DepositEvent(_amount, msg.sender, block.timestamp);
     }
 
-    function claimBusd() external payable onlyCommit {
+    function claimBusd() external virtual payable onlyCommit {
         require(wallets[msg.sender].amountBUSD > 0);
         uint256 _balanceBusd = wallets[msg.sender].amountBUSD;
         require(
@@ -479,7 +479,7 @@ contract LaunchPad is
         wallets[msg.sender].amountToken[index] = 0;
     }
 
-    function sync(uint256 _amount) internal {
+    function sync(uint256 _amount) internal virtual {
         uint256 i = 0;
         while (i < subscribers.length) {
             address _buyer = subscribers[i];
@@ -495,10 +495,7 @@ contract LaunchPad is
                 .div(tokenPrice)
                 .mul(1e18);
 
-            uint256 _totalBusdWillReceive = getTotalBusdWillReceive(
-                _buyer,
-                tokenReceive
-            );
+            uint256 _totalBusdWillReceive = getTotalBusdReceived(_buyer) + tokenReceive;
 
             // Add Token to Wallet
             if (_totalBusdWillReceive <= wins[_buyer].amountBUSD) {
@@ -516,24 +513,6 @@ contract LaunchPad is
             }
             i++;
         }
-    }
-
-    function getTotalBusdWillReceive(address _buyer, uint256 _tokenReceive)
-        internal
-        view
-        returns (uint256)
-    {
-        Wallet memory _wallet = wallets[_buyer];
-        uint256[] memory _amountToken = _wallet.amountToken;
-        uint256 _totalTokenReceived = 0;
-        for (uint256 i = 0; i < _amountToken.length; i++) {
-            _totalTokenReceived += _amountToken[i];
-        }
-        _totalTokenReceived += _tokenReceive;
-        uint256 _totalBusdWillReceived = _totalTokenReceived.div(
-            tokenPrice.div(1e18)
-        );
-        return _totalBusdWillReceived;
     }
 
     function getTotalBusdReceived(address _buyer)
@@ -554,7 +533,7 @@ contract LaunchPad is
     }
 
     /* Admin Withdraw BUSD */
-    function withdrawBusdFunds() external onlyOwner onlyCommit {
+    function withdrawBusdFunds() external virtual onlyOwner onlyCommit {
         uint256 _balanceBusd = getTotalBusdWinners();
         bUSDAddress.transfer(ADDRESS_WITHDRAW, _balanceBusd);
     }

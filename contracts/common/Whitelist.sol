@@ -1,15 +1,13 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.2;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "hardhat/console.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-contract Whitelist is Ownable {
+contract Whitelist is OwnableUpgradeable {
 
     mapping(address => bool) public whitelist;
     address[] public whitelistedAddresses;
-    bool public hasWhitelisting = false;
-    uint256 private constant _TIMELOCK = 1 days;
+    bool public hasWhitelisting;
 
     event AddedToWhitelist(address[] indexed accounts);
     event RemovedFromWhitelist(address indexed account);
@@ -21,7 +19,7 @@ contract Whitelist is Ownable {
         _;
     }
 
-    constructor(bool _hasWhitelisting) {
+    function setWhitelisting(bool _hasWhitelisting) public onlyOwner {
         hasWhitelisting = _hasWhitelisting;
     }
 
