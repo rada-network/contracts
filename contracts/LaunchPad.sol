@@ -449,72 +449,72 @@ OwnableUpgradeable
     }
 
     // Claim Token from Wallet Contract
-    function claimToken() external payable onlyCommit {
-        /*
-            Claim 
-            1. If refund available => get back busd
-            refund = sub - win
-
-            2. If token available => get token
-            for each winner: 
-            token claimable = busd win / total busd * total deposited token - token claimed
-
-            function: getClaimableToken of sender
-            return token claimable = busd win / total busd * total deposited token - token claimed
-        */
-
-        uint256 balanceBusd = wins[msg.sender].amountBUSD;
-        // require(
-        //     this.availableBusd() >= balanceBusd,
-        //     "Amount has to be positive"
-        // );
-        // uint256 balanceRIR = wins[msg.sender].amountRIR;
-        // require(this.availableRIR() >= balanceRIR, "Amount has to be positive");
-        // uint256 balanceToken = wins[msg.sender].amountToken;
-        // require(
-        //     this.availableTokens() >= balanceToken,
-        //     "Amount has to be positive"
-        // );
-        // require(
-        //     bUSDAddress.transfer(msg.sender, balanceBusd),
-        //     "ERC20 transfer failed"
-        // );
-        // require(
-        //     rirAddress.transfer(msg.sender, balanceRIR),
-        //     "ERC20 transfer failed"
-        // );
-        // require(
-        //     tokenAddress.transfer(msg.sender, balanceToken),
-        //     "ERC20 transfer failed"
-        // );
-        // delete wins[msg.sender];
-    }
+    //    function claimToken() external payable onlyCommit {
+    //        /*
+    //            Claim
+    //            1. If refund available => get back busd
+    //            refund = sub - win
+    //
+    //            2. If token available => get token
+    //            for each winner:
+    //            token claimable = busd win / total busd * total deposited token - token claimed
+    //
+    //            function: getClaimableToken of sender
+    //            return token claimable = busd win / total busd * total deposited token - token claimed
+    //        */
+    //
+    //        uint256 balanceBusd = wins[msg.sender].amountBUSD;
+    //        // require(
+    //        //     this.availableBusd() >= balanceBusd,
+    //        //     "Amount has to be positive"
+    //        // );
+    //        // uint256 balanceRIR = wins[msg.sender].amountRIR;
+    //        // require(this.availableRIR() >= balanceRIR, "Amount has to be positive");
+    //        // uint256 balanceToken = wins[msg.sender].amountToken;
+    //        // require(
+    //        //     this.availableTokens() >= balanceToken,
+    //        //     "Amount has to be positive"
+    //        // );
+    //        // require(
+    //        //     bUSDAddress.transfer(msg.sender, balanceBusd),
+    //        //     "ERC20 transfer failed"
+    //        // );
+    //        // require(
+    //        //     rirAddress.transfer(msg.sender, balanceRIR),
+    //        //     "ERC20 transfer failed"
+    //        // );
+    //        // require(
+    //        //     tokenAddress.transfer(msg.sender, balanceToken),
+    //        //     "ERC20 transfer failed"
+    //        // );
+    //        // delete wins[msg.sender];
+    //    }
 
     function sync(uint256 _amount) internal {
         uint256 i = 0;
         while (i < subscribers.length) {
             address _buyer = subscribers[i];
+            Wallet storage _buyerWallet = wallets[_buyer];
+
+            // Tinh toan refund BUSD
+            if (subscription[_buyer].amountBUSD > wins[_buyer].amountBUSD && _buyerWallet.amountBUSD == 0) {
+                _buyerWallet.amountBUSD = subscription[_buyer].amountBUSD - wins[_buyer].amountBUSD;
+            }
+            uint256 _amountBUSDDeposite = _amount.mul(tokenPrice.div(1e18));
+            // Token Receive = busd wins * ( _deposit busd / total busd) / tokenPrice
+            uint256 tokenReceive = _amountBUSDDeposite.div(bUSDForSale).div(tokenPrice.div(1e18)).mul(wins[_buyer].amountBUSD);
+
+            uint256 _totalBusdWillReceive = getTotalBusdWillReceive(_buyer, tokenReceive);
+
+            if (_totalBusdWillReceive <= wins[_buyer].amountBUSD) {
+                _buyerWallet.amountToken.push(tokenReceive);
+            } else {
+                uint256 _bUSDRemain = wins[_buyer].amountBUSD - getTotalBusdReceived(_buyer);
+                tokenReceive = _bUSDRemain.div(tokenPrice.div(1e18));
+                _buyerWallet.amountToken.push(tokenReceive);
+            }
+
             if (!this.isBuyer(_buyer)) {
-                Wallet storage _buyerWallet = wallets[_buyer];
-
-                // Tinh toan refund BUSD
-                if (subscription[_buyer].amountBUSD > wins[_buyer].amountBUSD && _buyerWallet.amountBUSD == 0) {
-                    _buyerWallet.amountBUSD = subscription[_buyer].amountBUSD - wins[_buyer].amountBUSD;
-                }
-                uint256 _amountBUSDDeposite = _amount.mul(tokenPrice);
-                // Token Receive = busd wins * ( _deposit busd / total busd *100) / tokenPrice
-                uint256 tokenReceive = wins[_buyer].amountBUSD.mul(_amountBUSDDeposite).div(bUSDForSale).div(tokenPrice).mul(100);
-
-                uint256 _totalBusdWillReceive = getTotalBusdWillReceive(_buyer, tokenReceive);
-
-                if (_totalBusdWillReceive <= wins[_buyer].amountBUSD) {
-                    _buyerWallet.amountToken.push(tokenReceive);
-                } else {
-                    uint256 _bUSDRemain = wins[_buyer].amountBUSD - getTotalBusdReceived(_buyer);
-                    tokenReceive = _bUSDRemain.div(tokenPrice);
-                    _buyerWallet.amountToken.push(tokenReceive);
-                }
-
                 buyers.push(_buyer);
                 buyersCount++;
             }
@@ -530,7 +530,7 @@ OwnableUpgradeable
             _totalTokenReceived += _amountToken[i];
         }
         _totalTokenReceived += _tokenReceive;
-        uint256 _totalBusdWillReceived = _totalTokenReceived.div(tokenPrice);
+        uint256 _totalBusdWillReceived = _totalTokenReceived.div(tokenPrice.div(1e18));
         return _totalBusdWillReceived;
     }
 
@@ -541,7 +541,7 @@ OwnableUpgradeable
         for (uint i = 0; i < _amountToken.length; i++) {
             _totalTokenReceived += _amountToken[i];
         }
-        uint256 _totalBusdReceived = _totalTokenReceived.div(tokenPrice);
+        uint256 _totalBusdReceived = _totalTokenReceived.div(tokenPrice.div(1e18));
         return _totalBusdReceived;
     }
 
