@@ -27,19 +27,22 @@ contract LaunchPad is
         uint256 amountBUSD;
     }
 
-    mapping(address => Order) public subscription;
-    uint256 public subscriptionCount;
+    // List of subscriber who prefund to Pool
+    mapping(address => Order) public subscription; 
+    uint256 public subscriptionCount;   
     address[] public subscribers;
 
+    // List of winner with granted allocation
     mapping(address => Order) public wins;
     uint256 public winCount;
     address[] public winners;
 
+    // ???
     mapping(address => Wallet) public wallets;
     uint256 public buyersCount;
     address[] public buyers;
 
-    uint256[] public depositTokens;
+    uint256[] public depositTokens; // ???
 
     event DepositEvent(
         uint256 amount,
@@ -76,16 +79,16 @@ contract LaunchPad is
     uint256 public endDate; /* End Date - https://www.epochconverter.com/ */
     uint256 public individualMinimumAmountBusd; /* Minimum Amount Per Address */
     uint256 public individualMaximumAmountBusd; /* Minimum Amount Per Address */
-    uint256 public tokenPrice; /* Gia token theo USD */
+    uint256 public tokenPrice; /* Token price */
     uint256 public bUSDAllocated; /* Tokens Allocated */
-    uint256 public bUSDForSale; /* Tokens for Sale */
+    uint256 public bUSDForSale; /* Total Raising fund */
     uint256 public rate; /* 1 RIR = 100 BUSD */
-    uint256 public feeTax;
-    address public ADDRESS_WITHDRAW;
+    uint256 public feeTax; /* Platform fee, token keep to platform. Should be zero */
+    address public ADDRESS_WITHDRAW; /* Address to cashout */
 
-    ERC20 public tokenAddress;
-    ERC20 public bUSDAddress;
-    ERC20 public rirAddress;
+    ERC20 public tokenAddress; /* Address of token to be sold */
+    ERC20 public bUSDAddress; /* Address of bUSD */
+    ERC20 public rirAddress; /* Address of RIR */
 
     function initialize(
         address _tokenAddress,
@@ -148,24 +151,28 @@ contract LaunchPad is
         individualMinimumAmountBusd = _individualMinimumAmountBusd;
         individualMaximumAmountBusd = _individualMaximumAmountBusd;
 
-        tokenAddress = ERC20(_tokenAddress);
+        tokenAddress = ERC20(_tokenAddress); 
+        // should check null for default mainnet address of busd & rir
         bUSDAddress = ERC20(_bUSDAddress);
         rirAddress = ERC20(_rirAddress);
     }
 
+    /**
+     * not win fund, then need refund to subscribers
+     */
     function bUSDLeft() external view returns (uint256) {
         return bUSDForSale - bUSDAllocated;
     }
 
     /**
-     * Get List Subscribers
+     * Get List Subscribers address
      **/
     function getSubscribers() external view returns (address[] memory) {
         return subscribers;
     }
 
     /**
-     * Get List Winners
+     * Get List Winners address
      **/
     function getWinners() external view returns (address[] memory) {
         return winners;
