@@ -24,14 +24,14 @@ async function main() {
 
     const launchPadFactory = await ethers.getContractFactory("LaunchPad");
 
-    const startDate = Math.floor((Date.now() + 60 * 60 * 1000) / 1000);
-    const endDate = Math.floor((Date.now() + 7 * 24 * 60 * 60 * 1000) / 1000);
+    const startDate = Math.floor((Date.now()) / 1000);
+    const endDate = Math.floor((Date.now() + 30 * 24 * 60 * 60 * 1000) / 1000);
     const paramLaunchpad = {
         _tokenAddress: tokenAddress,
         _bUSDAddress: busdAddress,
         _rirAddress: rirAddress,
         _tokenPrice: utils.parseEther("1"),
-        _bUSDForSale: utils.parseEther("1000"),
+        _bUSDForSale: utils.parseEther("2000"),
         _startDate: startDate,
         _endDate: endDate,
         _individualMinimumAmountBusd: utils.parseEther("100"),
@@ -63,7 +63,7 @@ async function main() {
     const token = tokenContract.attach(
         tokenAddress
     );
-    await token.mint(launchPadAddress, utils.parseEther("1000000"));
+    //await token.mint(launchPadAddress, utils.parseEther("1000000"));
 }
 
 // We recommend this pattern to be able to use async/await everywhere
