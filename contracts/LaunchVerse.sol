@@ -285,10 +285,10 @@ contract LaunchVerse is
         // make sure maximize total approved
         if (totalSubBUSD >= bUSDForSale) {
             // oversub, then the approved amount need full
-            require(bUSDAllocated == bUSDForSale, "Sale is not fullfill");
+            require(_bUSDAllocated == bUSDForSale, "Sale is not fullfill");
         } else {
             // sub less than tota raising, fullfill all sub
-            require(bUSDAllocated == totalSubBUSD, "Sub is not fullfill");
+            require(_bUSDAllocated == totalSubBUSD, "Sub is not fullfill");
         }
 
         // update bUSDAllocated
