@@ -466,24 +466,34 @@ contract LaunchPad is
         emit DepositEvent(_amount, msg.sender, block.timestamp);
     }
 
-    function claimBusd() external virtual payable onlyCommit {
-        require(wallets[msg.sender].amountBUSD > 0);
-        uint256 _balanceBusd = wallets[msg.sender].amountBUSD;
-        require(
-            bUSDAddress.transferFrom(address(this), msg.sender, _balanceBusd),
-            "ERC20 transfer failed"
-        );
-        wallets[msg.sender].amountBUSD = 0;
+    function claimBusd() internal onlyCommit {
+        uint256 _amountBUSD = wallets[msg.sender].amountBUSD;
+        if(_amountBUSD > 0) {
+            require(
+                bUSDAddress.transferFrom(address(this), msg.sender, _amountBUSD),
+                "ERC20 transfer failed"
+            );
+            wallets[msg.sender].amountBUSD = 0;
+        }
     }
 
-    function claimToken(uint256 index) external payable onlyCommit {
-        uint256 _balanceToken = wallets[msg.sender].amountToken[index];
-        require(_balanceToken > 0);
-        require(
-            tokenAddress.transfer(msg.sender, _balanceToken),
-            "ERC20 transfer failed"
-        );
-        wallets[msg.sender].amountToken[index] = 0;
+    function claimToken(uint256 index) internal onlyCommit {
+        uint256 _amountToken = wallets[msg.sender].amountToken[index];
+        if(_amountToken > 0) {
+            require(
+                tokenAddress.transfer(msg.sender, _amountToken),
+                "ERC20 transfer failed"
+            );
+            wallets[msg.sender].amountToken[index] = 0;
+        }
+    }
+
+    function claim() external payable onlyCommit {
+        claimBusd();
+        uint256 _countClaimToken = wallets[msg.sender].amountToken.length;
+        for (uint256 i = 0; i < _countClaimToken; i++) {
+            claimToken(i);
+        }
     }
 
     function sync(uint256 _amount) internal virtual {
