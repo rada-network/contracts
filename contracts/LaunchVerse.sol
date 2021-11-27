@@ -462,6 +462,9 @@ contract LaunchVerse is
                 bUSDAddress.transferFrom(address(this), msg.sender, claimable[0]),
                 "ERC20 transfer failed - claim refund"
             );
+
+            // update refunded
+            subscription[msg.sender].refundedBUSD = claimable[0];
         }
         if (claimable[1] > 0) {
             // available claim busd
@@ -469,6 +472,8 @@ contract LaunchVerse is
                 tokenAddress.transferFrom(address(this), msg.sender, claimable[1]),
                 "ERC20 transfer failed - claim token"
             );
+            // update claimed token
+            subscription[msg.sender].claimedToken += claimable[1];
         }
     }
 
