@@ -101,15 +101,6 @@ contract LaunchVerse is
     ) public initializer {
         __Ownable_init();
         __Pausable_init();
-        //        require(
-        //            block.timestamp < _endDate,
-        //            "End Date should be further than current date"
-        //        );
-
-        //        require(
-        //            block.timestamp < _startDate,
-        //            "Start Date should be further than current date"
-        //        );
 
         require(_startDate < _endDate, "End Date higher than Start Date");
 
@@ -149,7 +140,7 @@ contract LaunchVerse is
         individualMaximumAmountBusd = _individualMaximumAmountBusd;
 
         // caculate the total token
-        totalTokenForSale = bUSDForSale.div(tokenPrice);
+        totalTokenForSale = bUSDForSale.div(tokenPrice).mul(1e18);
 
         tokenAddress = ERC20(_tokenAddress); 
         // should check null for default mainnet address of busd & rir
@@ -209,7 +200,7 @@ contract LaunchVerse is
      * Check Buyer is Winner - just check in the winners list
      **/
     function isWinner(address _buyer) external view returns (bool) {
-        return subscription[_buyer].approvedBUSD != 0;
+        return subscription[_buyer].approvedBUSD > 0;
     }
 
     /**
@@ -258,12 +249,6 @@ contract LaunchVerse is
             );
 
             require(_approvedBusd[i] > 0, "Amount has to be positive");
-
-            // no need to check this require
-            // require(
-            //     _approvedBusd[i] >= individualMinimumAmountBusd,
-            //     "Individual Minimum Amount Busd"
-            // );
 
             // need require less than his prefund amount
             require(
@@ -330,18 +315,23 @@ contract LaunchVerse is
         uint256 _amountRIR,
         address _referer
     ) external payable virtual {
+
+        // require project is open and not expire
+        require(block.timestamp < endDate, "The Pool has been expired");
+        require(block.timestamp > startDate, "The Pool have not started");
+
+        // amount cannot be negative
         require(_amountBusd >= 0, "Amount BUSD is not valid");
-
         require(_amountRIR >= 0, "Amount RIR is not valid");
-
+        // and at least one is positive
         require(_amountBusd > 0 || _amountRIR > 0, "Amount is not valid");
 
+        // cannot out of bound 
         require(
             individualMaximumAmountBusd >=
                 subscription[msg.sender].amountBUSD + _amountBusd,
             "Amount is overcome maximum"
         );
-
         require(
             individualMinimumAmountBusd <=
                 subscription[msg.sender].amountBUSD + _amountBusd,
@@ -434,32 +424,31 @@ contract LaunchVerse is
      */
     function getTotalTokenForWinner(address _winner) external view returns (uint256)  {
         Order memory _winnerOrder = subscription[_winner];
-        return _winnerOrder.approvedBUSD / bUSDForSale * totalTokenForSale;
+        return _winnerOrder.approvedBUSD.mul(totalTokenForSale).div(bUSDForSale);
     }
 
-    function _getClaimable(address _buyer) internal view returns (uint256[2] memory) {
+    function getClaimable(address _buyer) public view returns (uint256[2] memory) {
         uint256[2] memory claimable;
         Order memory _order = subscription[_buyer];
         // check if available busd to refund
         claimable[0] = _order.amountBUSD - _order.approvedBUSD - _order.refundedBUSD;
 
         // check if available token to claim
-        uint256 tokenClaimable = _order.approvedBUSD / bUSDForSale * totalTokenDeposited;
-        claimable[1] = tokenClaimable - _order.claimedToken;
+        uint256 _deposited =  totalTokenDeposited;
+        if (_deposited > totalTokenForSale) _deposited = totalTokenForSale; // cannot eceeds total sale token
 
+        uint256 _tokenClaimable = _order.approvedBUSD.mul(_deposited).div(bUSDForSale);
+        claimable[1] = _tokenClaimable.sub(_order.claimedToken);
         return claimable;        
     }
 
-    function getClaimable(address _buyer) external view returns (uint256[2] memory) {
-        return _getClaimable(_buyer);
-    }
-
     function claim() external payable onlyCommit {
-        uint256[2] memory claimable = _getClaimable(msg.sender);
+        uint256[2] memory claimable = getClaimable(msg.sender);
         if (claimable[0] > 0) {
+            require(bUSDAddress.balanceOf(address(this)) > claimable[0], "BUSD Not enough");
             // available claim busd
             require(
-                bUSDAddress.transferFrom(address(this), msg.sender, claimable[0]),
+                bUSDAddress.transfer(msg.sender, claimable[0]),
                 "ERC20 transfer failed - claim refund"
             );
 
@@ -468,16 +457,15 @@ contract LaunchVerse is
         }
         if (claimable[1] > 0) {
             // available claim busd
+            require(tokenAddress.balanceOf(address(this)) > claimable[1], "Not enough token");
             require(
-                tokenAddress.transferFrom(address(this), msg.sender, claimable[1]),
+                tokenAddress.transfer(msg.sender, claimable[1]),
                 "ERC20 transfer failed - claim token"
             );
             // update claimed token
             subscription[msg.sender].claimedToken += claimable[1];
         }
     }
-
-
 
     /* Admin Withdraw BUSD */
     function withdrawBusdFunds() external virtual onlyOwner onlyCommit {
