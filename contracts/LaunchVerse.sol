@@ -202,7 +202,7 @@ contract LaunchVerse is
      * Check Buyer is Subscriber - just check in the subscription list
      **/
     function isSubscriber(address _buyer) external view returns (bool) {
-        return subscription[_buyer].amountRIR != 0;
+        return subscription[_buyer].amountBUSD != 0;
     }
 
     /**

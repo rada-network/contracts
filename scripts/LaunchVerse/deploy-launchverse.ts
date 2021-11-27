@@ -24,7 +24,7 @@ async function main() {
 
     const launchPadFactory = await ethers.getContractFactory("LaunchVerse");
 
-    const startDate = Math.floor((Date.now() + 60 * 60 * 1000) / 1000);
+    const startDate = Math.floor((Date.now() + 0 * 60 * 60 * 1000) / 1000);
     const endDate = Math.floor((Date.now() + 7 * 24 * 60 * 60 * 1000) / 1000);
     const paramLaunchpad = {
         _tokenAddress: tokenAddress,
