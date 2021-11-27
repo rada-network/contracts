@@ -3,16 +3,15 @@ pragma solidity ^0.8.5;
 
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "./LaunchPad.sol";
-import "./common/Whitelist.sol";
 
-contract WhiteListPad is LaunchPad, Whitelist {
+contract WhiteListPad is LaunchPad {
     using SafeMathUpgradeable for uint256;
 
     function createSubscription(
         uint256 _amountBusd,
         uint256 _amountRIR,
         address _referer
-    ) external payable override onlyWhitelisted {
+    ) external payable override {
 
     }
 
