@@ -115,15 +115,18 @@ describe("LaunchVerse", async function () {
 
             let addr1_tokenAmount = await tokenContract.balanceOf(addr1.address);
             expect(utils.formatEther(addr1_tokenAmount)).to.equal("0.0");
-
             await rirContract.connect(addr1).approve(launchPadContract.address, constants.MaxUint256);
             await bUSDContract.connect(addr1).approve(launchPadContract.address, constants.MaxUint256);
             await launchPadContract.connect(addr1).createSubscription(utils.parseEther("100"), utils.parseEther("1"), addr4.address);
 
             let orderAddr1 = await launchPadContract.connect(addr1).getOrderSubscriber(addr1.address);
-            expect(utils.formatEther(orderAddr1[0])).to.equal("1.0", "Order RIR amount - Address 1");
-            expect(utils.formatEther(orderAddr1[1])).to.equal("100.0", "Order Busd amount - Address 1");
-            expect(orderAddr1[2]).to.equal(addr4.address);
+            expect(utils.formatEther(orderAddr1.amountRIR)).to.equal("1.0", "Order RIR amount - Address 1"); // amountRIR
+            expect(utils.formatEther(orderAddr1.amountBUSD)).to.equal("100.0", "Order Busd amount - Address 1"); // amountBUSD
+            expect(orderAddr1.referer).to.equal(addr4.address); // referer
+            expect(utils.formatEther(orderAddr1.approvedBUSD)).to.equal("0.0"); // approvedBUSD
+            expect(utils.formatEther(orderAddr1.refundedBUSD)).to.equal("0.0"); // refundedBUSD
+            expect(utils.formatEther(orderAddr1.claimedToken)).to.equal("0.0"); // claimedToken
+
 
             addr1_BusdAmount = await bUSDContract.balanceOf(addr1.address);
             addr1_RIRAmount = await rirContract.balanceOf(addr1.address);
@@ -132,13 +135,13 @@ describe("LaunchVerse", async function () {
             expect(utils.formatEther(addr1_BusdAmount)).to.equal("900.0");
             expect(utils.formatEther(addr1_RIRAmount)).to.equal("9.0");
             expect(utils.formatEther(addr1_tokenAmount)).to.equal("0.0");
-
-            await launchPadContract.connect(addr1).createSubscription(utils.parseEther("100"), utils.parseEther("1"), addr4.address);
+            console.log('create sub 2');
+            await launchPadContract.connect(addr1).createSubscription(utils.parseEther("100"), utils.parseEther("1"), addr3.address);
 
             orderAddr1 = await launchPadContract.connect(addr1).getOrderSubscriber(addr1.address);
             expect(utils.formatEther(orderAddr1[0])).to.equal("2.0", "Order RIR amount - Address 1");
             expect(utils.formatEther(orderAddr1[1])).to.equal("200.0", "Order Busd amount - Address 1");
-            expect(orderAddr1[2]).to.equal(addr4.address);
+            expect(orderAddr1[2]).to.equal(addr4.address); // not change referer
 
             addr1_BusdAmount = await bUSDContract.balanceOf(addr1.address);
             addr1_RIRAmount = await rirContract.balanceOf(addr1.address);
@@ -147,9 +150,10 @@ describe("LaunchVerse", async function () {
             expect(utils.formatEther(addr1_RIRAmount)).to.equal("8.0");
             expect(utils.formatEther(addr1_tokenAmount)).to.equal("0.0");
 
+            // push more RIR than require (RIR * 100 > BUSD)
             await expect(launchPadContract.connect(addr1).createSubscription(utils.parseEther("200"), utils.parseEther("5"), addr4.address)).to.revertedWith('Amount is not valid');
-
-            await launchPadContract.connect(addr1).createSubscription(utils.parseEther("300"), utils.parseEther("0"), addr4.address);
+            console.log('create sub 3');
+            await launchPadContract.connect(addr1).createSubscription(utils.parseEther("300"), utils.parseEther("0"), addr3.address);
 
             orderAddr1 = await launchPadContract.connect(addr1).getOrderSubscriber(addr1.address);
             expect(utils.formatEther(orderAddr1[0])).to.equal("2.0", "Order RIR amount - Address 1");
@@ -179,6 +183,7 @@ describe("LaunchVerse", async function () {
 
             await rirContract.connect(addr2).approve(launchPadContract.address, constants.MaxUint256);
             await bUSDContract.connect(addr2).approve(launchPadContract.address, constants.MaxUint256);
+            // revert - more RIR than require
             await expect(launchPadContract.connect(addr2).createSubscription(utils.parseEther("200"), utils.parseEther("5"), addr4.address)).to.reverted;
             expect(utils.formatUnits(await launchPadContract.subscriptionCount(), 0)).to.equal('1', "Count Order Sub")
 
@@ -228,13 +233,21 @@ describe("LaunchVerse", async function () {
                             [utils.parseEther("500"), utils.parseEther("200")],
                         );
 
-                        const orderAddr1 = await launchPadContract.getOrderWinner(addr1.address);
-                        expect(utils.formatEther(orderAddr1.amountRIR)).to.equal("0.0");
+                        // addr1: 500$ 2RIR
+                        const orderAddr1 = await launchPadContract.getOrderSubscriber(addr1.address);
+                        expect(utils.formatEther(orderAddr1.amountRIR)).to.equal("2.0");
                         expect(utils.formatEther(orderAddr1.amountBUSD)).to.equal("500.0");
+                        expect(utils.formatEther(orderAddr1.approvedBUSD)).to.equal("500.0");
+                        expect(utils.formatEther(orderAddr1.refundedBUSD)).to.equal("0.0");
+                        expect(utils.formatEther(orderAddr1.claimedToken)).to.equal("0.0");
 
-                        const orderAddr2 = await launchPadContract.getOrderWinner(addr2.address);
-                        expect(utils.formatEther(orderAddr2.amountRIR)).to.equal("0.0");
+                        // addr2: 200$ 2RIR
+                        const orderAddr2 = await launchPadContract.getOrderSubscriber(addr2.address);
+                        expect(utils.formatEther(orderAddr2.amountRIR)).to.equal("2.0");
                         expect(utils.formatEther(orderAddr2.amountBUSD)).to.equal("200.0");
+                        expect(utils.formatEther(orderAddr2.approvedBUSD)).to.equal("200.0");
+                        expect(utils.formatEther(orderAddr2.refundedBUSD)).to.equal("0.0");
+                        expect(utils.formatEther(orderAddr2.claimedToken)).to.equal("0.0");
 
                         let count = await launchPadContract.winCount();
                         expect(count).to.equal(2);
@@ -259,21 +272,40 @@ describe("LaunchVerse", async function () {
                                 winners = await launchPadContract.getWinners();
                                 expect(winners.length).to.equal(0);
 
-                                await launchPadContract.connect(owner).importWinners(
+                                // import with over
+                                await expect(launchPadContract.connect(owner).importWinners(
                                     [addr1.address, addr2.address],
-                                    [utils.parseEther("500"), utils.parseEther("200")]
-                                );
+                                    [utils.parseEther("600"), utils.parseEther("200")]
+                                )).to.reverted;
 
+                                // not fullfill
+                                await expect(launchPadContract.connect(owner).importWinners(
+                                    [addr1.address, addr2.address],
+                                    [utils.parseEther("400"), utils.parseEther("200")]
+                                )).to.reverted;
                             })
                         })
 
 
                         describe("Commit Winners", () => {
                             it('Commit', async function () {
+                                // commit without import
+                                console.log('try to commit to empty winer list')
+                                await expect(launchPadContract.connect(owner).commitWinners()).to.reverted;
+                                // import
+                                await launchPadContract.connect(owner).importWinners(
+                                    [addr1.address, addr2.address],
+                                    [utils.parseEther("500"), utils.parseEther("200")]
+                                );
                                 await launchPadContract.connect(owner).commitWinners();
+
 
                                 describe("Deposit Token", async () => {
                                     it('Deposit Success', async () => {
+                                        // total sale token: 1000/1 = 1000
+                                        let totalTokenForSale = await launchPadContract.totalTokenForSale();
+                                        expect(utils.formatEther(totalTokenForSale)).to.equal("1000.0");
+
                                         let owner_tokenAmount = await tokenContract.balanceOf(owner.address);
                                         expect(utils.formatEther(owner_tokenAmount)).to.equal("0.0");
                                         await tokenContract.mint(owner.address, utils.parseEther("1000000"));
@@ -287,31 +319,78 @@ describe("LaunchVerse", async function () {
                                         launchPadContract_tokenAmount = await tokenContract.balanceOf(launchPadContract.address);
                                         expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("100.0");
 
-                                        let tokenDeposit = await launchPadContract.depositTokens(0);
+                                        let tokenDeposit = await launchPadContract.totalTokenDeposited();
                                         expect(utils.formatEther(tokenDeposit)).to.equal("100.0");
 
-                                        let wallet_addr1 = await launchPadContract.getWalletBuyer(addr1.address);
-                                        expect(utils.formatEther(wallet_addr1[0][0])).to.equal("50.0");
+                                        // total sale 1000, invest addr1 500, addr2 200, no refund
+                                        // deposit 100 => addr1: 50, addr2 20
+                                        let orderAddr1 = await launchPadContract.connect(addr1).getOrderSubscriber(addr1.address);
+                                        
+                                        let claimable = await launchPadContract.getClaimable(addr1.address);
+                                        
+                                        expect(utils.formatEther(claimable[0])).to.equal("0.0");
+                                        expect(utils.formatEther(claimable[1])).to.equal("50.0");
+                                        // for addr2
+                                        claimable = await launchPadContract.getClaimable(addr2.address);
+                                        expect(utils.formatEther(claimable[0])).to.equal("0.0");
+                                        expect(utils.formatEther(claimable[1])).to.equal("20.0");
 
+                                        // claim
+                                        console.log(
+                                            'claim',
+                                            utils.formatEther(claimable[1]),
+                                            utils.formatEther(await tokenContract.balanceOf(launchPadContract.address))
+                                        )                                        
+                                        await launchPadContract.connect(addr1).claim();
+                                        // make sure the claimed info update, balance is reduce
+                                        orderAddr1 = await launchPadContract.connect(addr1).getOrderSubscriber(addr1.address);
+                                        expect(utils.formatEther(orderAddr1[0])).to.equal("2.0", "Order RIR amount - Address 1"); // amountRIR
+                                        expect(utils.formatEther(orderAddr1[1])).to.equal("500.0", "Order Busd amount - Address 1"); // amountBUSD
+                                        expect(orderAddr1[2]).to.equal(addr4.address); // referer
+                                        expect(utils.formatEther(orderAddr1[3])).to.equal("500.0"); // approvedBUSD
+                                        expect(utils.formatEther(orderAddr1[4])).to.equal("0.0"); // refundedBUSD
+                                        expect(utils.formatEther(orderAddr1[5])).to.equal("50.0"); // claimedToken
+
+
+                                        // deposit more
                                         await launchPadContract.deposit(utils.parseEther("800000"));
-                                        tokenDeposit = await launchPadContract.depositTokens(1);
-                                        expect(utils.formatEther(tokenDeposit)).to.equal("800000.0");
+                                        tokenDeposit = await launchPadContract.totalTokenDeposited();
+                                        expect(utils.formatEther(tokenDeposit)).to.equal("800100.0");
                                         launchPadContract_tokenAmount = await tokenContract.balanceOf(launchPadContract.address);
-                                        expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("800100.0");
+                                        expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("800050.0");
 
-                                        wallet_addr1 = await launchPadContract.getWalletBuyer(addr1.address);
-                                        expect(utils.formatEther(wallet_addr1[0][1])).to.equal("450.0");
+                                        // check claimable
+                                        claimable = await launchPadContract.getClaimable(addr1.address);
+                                        expect(utils.formatEther(claimable[0])).to.equal("0.0");
+                                        expect(utils.formatEther(claimable[1])).to.equal("450.0");
+                                        // for addr2
+                                        claimable = await launchPadContract.getClaimable(addr2.address);
+                                        expect(utils.formatEther(claimable[0])).to.equal("0.0");
+                                        expect(utils.formatEther(claimable[1])).to.equal("200.0");
 
-                                        // Addr 2
-                                        let wallet_addr2 = await launchPadContract.getWalletBuyer(addr2.address);
-                                        expect(utils.formatEther(wallet_addr2[0][0])).to.equal("20.0");
-                                        expect(utils.formatEther(wallet_addr2[0][1])).to.equal("180.0");
-
+                                        // claim for addr2, all it's token take
                                         await launchPadContract.connect(addr2).claim();
                                         let addr2_tokenAmount = await tokenContract.balanceOf(addr2.address);
-                                        expect(utils.formatEther(addr2_tokenAmount)).to.equal("200.0")
+                                        expect(utils.formatEther(addr2_tokenAmount)).to.equal("200.0");
                                         launchPadContract_tokenAmount = await tokenContract.balanceOf(launchPadContract.address);
-                                        expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("799900.0")
+                                        expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("799850.0");
+
+                                        // reclaim for addr2, nothing change
+                                        await launchPadContract.connect(addr2).claim();
+                                        addr2_tokenAmount = await tokenContract.balanceOf(addr2.address);
+                                        expect(utils.formatEther(addr2_tokenAmount)).to.equal("200.0");
+                                        launchPadContract_tokenAmount = await tokenContract.balanceOf(launchPadContract.address);
+                                        expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("799850.0");
+
+                                        // claim token addr1, get last 450
+                                        await launchPadContract.connect(addr1).claim();
+                                        addr2_tokenAmount = await tokenContract.balanceOf(addr1.address);
+                                        expect(utils.formatEther(addr2_tokenAmount)).to.equal("500.0");
+                                        launchPadContract_tokenAmount = await tokenContract.balanceOf(launchPadContract.address);
+                                        expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("799400.0");
+
+
+                                        
 
                                         describe("Withdraw Token", async () => {
                                             it("Withdraw Busd", async () => {
@@ -323,15 +402,15 @@ describe("LaunchVerse", async function () {
                                                 expect(utils.formatEther(addrWithdraw_bUSDAmount)).to.equal("700.0");
                                             })
 
-                                            it("Withdraw Remain Token", async () => {
-                                                await expect(launchPadContract.connect(addr4).withdrawTokensRemain()).to.reverted;
-                                                await launchPadContract.withdrawTokensRemain();
-                                                let launchPadContract_tokenAmount = await tokenContract.balanceOf(launchPadContract.address);
-                                                expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("500.0");
+                                            // it("Withdraw Remain Token", async () => {
+                                            //     await expect(launchPadContract.connect(addr4).withdrawTokensRemain()).to.reverted;
+                                            //     await launchPadContract.withdrawTokensRemain();
+                                            //     let launchPadContract_tokenAmount = await tokenContract.balanceOf(launchPadContract.address);
+                                            //     expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("500.0");
 
-                                                let addrWithdraw_tokenAmount = await tokenContract.balanceOf("0xdDDDbebEAD284030Ba1A59cCD99cE34e6d5f4C96");
-                                                expect(utils.formatEther(addrWithdraw_tokenAmount)).to.equal("799400.0");
-                                            })
+                                            //     let addrWithdraw_tokenAmount = await tokenContract.balanceOf("0xdDDDbebEAD284030Ba1A59cCD99cE34e6d5f4C96");
+                                            //     expect(utils.formatEther(addrWithdraw_tokenAmount)).to.equal("799400.0");
+                                            // })
                                         })
                                     })
                                 })
