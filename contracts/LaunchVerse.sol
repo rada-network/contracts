@@ -28,14 +28,18 @@ contract LaunchVerse is
 
     // List of subscriber who prefund to Pool
     mapping(address => Order) public subscription; 
-    uint256 public subscriptionCount;   
     address[] public subscribers;
     uint256 public totalSubBUSD;
     uint256 public totalSubRIR;
+    function subscriptionCount() public view returns (uint) {
+        return subscribers.length;
+    }
 
     // List of winner address and count
-    uint256 public winCount;
     address[] public winners;
+    function winCount() public view returns (uint) {
+        return winners.length;
+    }
 
     // deposited token
     uint256 public totalTokenDeposited;
@@ -55,7 +59,7 @@ contract LaunchVerse is
 
     modifier winEmpty() {
         require(winners.length == 0, "Wins need empty");
-        require(winCount == 0, "Wins need empty");
+        require(winCount() == 0, "Wins need empty");
         _;
     }
 
@@ -69,6 +73,18 @@ contract LaunchVerse is
         _;
     }
 
+    /**
+     * Admin role who can handle winner list, deposit token
+     */
+    mapping(address => bool) public admins;
+    function setAdmin(address _adminAddress, bool _allow) public onlyOwner {
+        admins[_adminAddress] = _allow;
+    }
+    modifier onlyAdmin() {
+        require(admins[msg.sender] == true, "Caller is not an approved user");
+        _;
+    }
+
     bool public isCommit;
     uint256 public startDate; /* Start Date  - https://www.epochconverter.com/ */
     uint256 public endDate; /* End Date - https://www.epochconverter.com/ */
@@ -78,8 +94,9 @@ contract LaunchVerse is
     uint256 public bUSDAllocated; /* Tokens Allocated */
     uint256 public bUSDForSale; /* Total Raising fund */
     uint256 public rate; /* 1 RIR = 100 BUSD */
-    uint256 public feeTax; /* Platform fee, token keep to platform. Should be zero */
-    address public ADDRESS_WITHDRAW; /* Address to cashout */
+    uint256 public tokenFee; /* Platform fee, token keep to platform. Should be zero */
+
+    address public ADDRESS_WITHDRAW = 0xdDDDbebEAD284030Ba1A59cCD99cE34e6d5f4C96; /* Address to cashout */
 
     uint256 public totalTokenForSale; /* calculate when init = bUSDForSale / tokenPrice */
 
@@ -97,7 +114,7 @@ contract LaunchVerse is
         uint256 _endDate,
         uint256 _individualMinimumAmountBusd,
         uint256 _individualMaximumAmountBusd,
-        uint256 _feeTax
+        uint256 _tokenFee
     ) public initializer {
         __Ownable_init();
         __Pausable_init();
@@ -130,12 +147,9 @@ contract LaunchVerse is
         bUSDForSale = _bUSDForSale;
         tokenPrice = _tokenPrice;
         bUSDAllocated = 0;
-        subscriptionCount = 0;
-        winCount = 0;
         rate = 100;
-        feeTax = _feeTax;
+        tokenFee = _tokenFee;
         isCommit = false;
-        ADDRESS_WITHDRAW = 0xdDDDbebEAD284030Ba1A59cCD99cE34e6d5f4C96;
         individualMinimumAmountBusd = _individualMinimumAmountBusd;
         individualMaximumAmountBusd = _individualMaximumAmountBusd;
 
@@ -190,6 +204,21 @@ contract LaunchVerse is
     }
 
     /**
+        GETTER
+     */
+    function minimumAmountBusd() public view returns (uint256) {
+        return individualMinimumAmountBusd;
+    }
+    function maximumAmountBusd() public view returns (uint256) {
+        return individualMaximumAmountBusd;
+    }
+    // Maximum a wallet amount approved
+    function maximumApprovedAmountBusd(address _address) public view returns (uint256) {
+        return subscription[_address].amountBUSD;
+    }
+
+
+    /**
      * Check Buyer is Subscriber - just check in the subscription list
      **/
     function isSubscriber(address _buyer) external view returns (bool) {
@@ -207,7 +236,7 @@ contract LaunchVerse is
      * Set Wins is empty
      **/
     function setEmptyWins() external onlyOwner onlyUncommit {
-        require(winCount > 0);
+        require(winCount() > 0);
         require(winners.length > 0);
         for (uint256 i = 0; i < subscribers.length; i++) {
             address _address = subscribers[i];
@@ -219,7 +248,6 @@ contract LaunchVerse is
 
         // reset winners and allocated
         delete winners;
-        delete winCount;
         delete bUSDAllocated;
     }
 
@@ -252,8 +280,8 @@ contract LaunchVerse is
 
             // need require less than his prefund amount
             require(
-                _approvedBusd[i] <= subscription[_buyer[i]].amountBUSD,
-                "Individual Maximum Amount Busd"
+                _approvedBusd[i] <= maximumApprovedAmountBusd(_buyer[i]),
+                "Approved BUSD exceed the amount for a buyer"
             );
 
             // update approveBUSD
@@ -261,7 +289,6 @@ contract LaunchVerse is
 
             // push into winners list address and increase count
             winners.push(_buyer[i]);
-            winCount += 1;
         }
 
         // check if all RIR holder are in winners list
@@ -282,7 +309,7 @@ contract LaunchVerse is
 
     function commitWinners() external payable virtual onlyOwner onlyUncommit {
         // make sure winners list available
-        require(winners.length > 0 && winCount > 0, "No winner");
+        require(winners.length > 0 && winCount() > 0, "No winner");
 
         // every thing need to be check are checked when import
         require(isCommit = true);
@@ -314,7 +341,7 @@ contract LaunchVerse is
         uint256 _amountBusd,
         uint256 _amountRIR,
         address _referer
-    ) external payable virtual {
+    ) public payable virtual {
 
         // require project is open and not expire
         require(block.timestamp < endDate, "The Pool has been expired");
@@ -328,12 +355,12 @@ contract LaunchVerse is
 
         // cannot out of bound 
         require(
-            individualMaximumAmountBusd >=
+            maximumAmountBusd() >=
                 subscription[msg.sender].amountBUSD + _amountBusd,
             "Amount is overcome maximum"
         );
         require(
-            individualMinimumAmountBusd <=
+            minimumAmountBusd() <=
                 subscription[msg.sender].amountBUSD + _amountBusd,
             "Amount is overcome minimum"
         );
@@ -342,7 +369,6 @@ contract LaunchVerse is
             // first time, need add to subscribers address list and count
             // do we need check and init subscription[msg.sender] = Order ?
             subscribers.push(msg.sender);
-            subscriptionCount += 1;
         }
 
         if (_amountRIR > 0) {
@@ -404,9 +430,10 @@ contract LaunchVerse is
     }
 
     /*
-    /* Deposit Token
+    /* Deposit Token,
+     * Call by admin
     */
-    function deposit(uint256 _amount) external payable onlyCommit onlyOwner {
+    function deposit(uint256 _amount) external payable onlyOwner {
         require(_amount > 0, "Amount has to be positive");
         require(
             tokenAddress.transferFrom(msg.sender, address(this), _amount),
