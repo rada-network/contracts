@@ -7,7 +7,7 @@ import { solidity } from 'ethereum-waffle';
 use(solidity);
 
 describe("LaunchPad", async function () {
-
+return;
     let launchPadContract: Contract;
     let tokenContract: Contract;
     let bUSDContract: Contract;

@@ -3,7 +3,7 @@ import {BigNumber} from "ethers";
 import {ethers, upgrades} from "hardhat"
 
 describe("Deploy", function () {
-
+return;
     // @ts-ignore
     it("Deploy Token", async () => {
         const RIRContract = await ethers.getContractFactory("RIRContract");

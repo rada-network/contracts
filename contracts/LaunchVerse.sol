@@ -181,6 +181,9 @@ contract LaunchVerse is
         } else {
             //rirAddress = 0x30FB969AD2BFCf0f3136362cccC0bCB99a7193bC; // RIR Token on mainnet
         }
+
+        // Grant admin role to a owner
+        admins[owner()] = true;
     }
 
     /**
@@ -358,8 +361,8 @@ contract LaunchVerse is
     ) public payable virtual {
 
         // require project is open and not expire
-        require(block.timestamp < endDate, "The Pool has been expired");
-        require(block.timestamp > startDate, "The Pool have not started");
+        require(block.timestamp <= endDate, "The Pool has been expired");
+        require(block.timestamp >= startDate, "The Pool have not started");
 
         // amount cannot be negative
         require(_amountBusd >= 0, "Amount BUSD is not valid");
@@ -475,8 +478,9 @@ contract LaunchVerse is
 
         uint256 _tokenClaimable = _order.approvedBUSD.mul(_deposited).div(bUSDForSale);
         uint256 _tokenFee = getTokenFee();
+        uint256 cent = 100;
         if (_tokenFee != 0) {
-            _tokenClaimable = _tokenClaimable.mul(100 - _tokenFee.div(1e18)).div(100);
+            _tokenClaimable = _tokenClaimable.mul(cent.mul(1e18) - _tokenFee).div(cent.mul(1e18));
         }
         claimable[1] = _tokenClaimable.sub(_order.claimedToken);
         return claimable;        
