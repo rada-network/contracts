@@ -85,7 +85,14 @@ contract LaunchVerse is
         _;
     }
 
+    modifier onlyUnwithdrawBusd() {
+        require(!isWithdrawBusd, "You have withdrawn Busd");
+        _;
+    }
+    
+
     bool public isCommit;
+    bool public isWithdrawBusd;
     uint256 public startDate; /* Start Date  - https://www.epochconverter.com/ */
     uint256 public endDate; /* End Date - https://www.epochconverter.com/ */
     uint256 public individualMinimumAmountBusd; /* Minimum Amount Per Address */
@@ -96,7 +103,7 @@ contract LaunchVerse is
     uint256 public rate; /* 1 RIR = 100 BUSD */
     uint256 public tokenFee; /* Platform fee, token keep to platform. Should be zero */
 
-    address public ADDRESS_WITHDRAW = 0xdDDDbebEAD284030Ba1A59cCD99cE34e6d5f4C96; /* Address to cashout */
+    address public ADDRESS_WITHDRAW; /* Address to cashout */
 
     uint256 public totalTokenForSale; /* calculate when init = bUSDForSale / tokenPrice */
 
@@ -150,6 +157,11 @@ contract LaunchVerse is
         rate = 100;
         tokenFee = _tokenFee;
         isCommit = false;
+        
+        // for widthdraw BUSD
+        isWithdrawBusd = false;
+        ADDRESS_WITHDRAW = 0xdDDDbebEAD284030Ba1A59cCD99cE34e6d5f4C96; // should not change
+
         individualMinimumAmountBusd = _individualMinimumAmountBusd;
         individualMaximumAmountBusd = _individualMaximumAmountBusd;
 
@@ -195,16 +207,16 @@ contract LaunchVerse is
     /**
      * Get Order Of Subscriber
      **/
-    function getOrderSubscriber(address _buyer)
+    function getOrderSubscriber(address _address)
         external
         view
         returns (Order memory)
     {
-        return subscription[_buyer];
+        return subscription[_address];
     }
 
     /**
-        GETTER
+        GETTER allow override in whitelist contract
      */
     function minimumAmountBusd() public view returns (uint256) {
         return individualMinimumAmountBusd;
@@ -216,20 +228,22 @@ contract LaunchVerse is
     function maximumApprovedAmountBusd(address _address) public view returns (uint256) {
         return subscription[_address].amountBUSD;
     }
-
+    function getTokenFee() public view returns (uint256) {
+        return tokenFee;
+    }
 
     /**
      * Check Buyer is Subscriber - just check in the subscription list
      **/
-    function isSubscriber(address _buyer) external view returns (bool) {
-        return subscription[_buyer].amountRIR != 0;
+    function isSubscriber(address _address) external view returns (bool) {
+        return subscription[_address].amountBUSD != 0;
     }
 
     /**
      * Check Buyer is Winner - just check in the winners list
      **/
-    function isWinner(address _buyer) external view returns (bool) {
-        return subscription[_buyer].approvedBUSD > 0;
+    function isWinner(address _address) external view returns (bool) {
+        return subscription[_address].approvedBUSD > 0;
     }
 
     /**
@@ -255,19 +269,19 @@ contract LaunchVerse is
      * Import Winners
      **/
     function importWinners(
-        address[] calldata _buyer,
+        address[] calldata _address,
         uint256[] calldata _approvedBusd
     ) external virtual onlyOwner winEmpty {
         uint256 _bUSDAllocated = 0;
 
-        for (uint256 i = 0; i < _buyer.length; i++) {
+        for (uint256 i = 0; i < _address.length; i++) {
             _bUSDAllocated += _approvedBusd[i];
 
             // should put buyer address into error message
-            require(this.isSubscriber(_buyer[i]), "Buyer is not subscriber");
+            require(this.isSubscriber(_address[i]), "Buyer is not subscriber");
 
             require(
-                !this.isWinner(_buyer[i]),
+                !this.isWinner(_address[i]),
                 "Buyer already exists in the list"
             );
 
@@ -280,15 +294,15 @@ contract LaunchVerse is
 
             // need require less than his prefund amount
             require(
-                _approvedBusd[i] <= maximumApprovedAmountBusd(_buyer[i]),
+                _approvedBusd[i] <= maximumApprovedAmountBusd(_address[i]),
                 "Approved BUSD exceed the amount for a buyer"
             );
 
             // update approveBUSD
-            subscription[_buyer[i]].approvedBUSD = _approvedBusd[i];
+            subscription[_address[i]].approvedBUSD = _approvedBusd[i];
 
             // push into winners list address and increase count
-            winners.push(_buyer[i]);
+            winners.push(_address[i]);
         }
 
         // check if all RIR holder are in winners list
@@ -335,7 +349,7 @@ contract LaunchVerse is
 
 
     /**
-     * 
+     * Create Subscription
      */
     function createSubscription(
         uint256 _amountBusd,
@@ -397,11 +411,6 @@ contract LaunchVerse is
 
         if (_amountBusd > 0) {
             require(
-                bUSDAddress.balanceOf(msg.sender) >= _amountBusd,
-                "You dont have enough Busd Token"
-            );
-
-            require(
                 bUSDAddress.transferFrom(
                     msg.sender,
                     address(this),
@@ -453,10 +462,10 @@ contract LaunchVerse is
         Order memory _winnerOrder = subscription[_winner];
         return _winnerOrder.approvedBUSD.mul(totalTokenForSale).div(bUSDForSale);
     }
-
-    function getClaimable(address _buyer) public view returns (uint256[2] memory) {
+    
+    function getClaimable(address _address) public view returns (uint256[2] memory) {
         uint256[2] memory claimable;
-        Order memory _order = subscription[_buyer];
+        Order memory _order = subscription[_address];
         // check if available busd to refund
         claimable[0] = _order.amountBUSD - _order.approvedBUSD - _order.refundedBUSD;
 
@@ -465,6 +474,10 @@ contract LaunchVerse is
         if (_deposited > totalTokenForSale) _deposited = totalTokenForSale; // cannot eceeds total sale token
 
         uint256 _tokenClaimable = _order.approvedBUSD.mul(_deposited).div(bUSDForSale);
+        uint256 _tokenFee = getTokenFee();
+        if (_tokenFee != 0) {
+            _tokenClaimable = _tokenClaimable.mul(100 - _tokenFee.div(1e18)).div(100);
+        }
         claimable[1] = _tokenClaimable.sub(_order.claimedToken);
         return claimable;        
     }
@@ -472,7 +485,7 @@ contract LaunchVerse is
     function claim() external payable onlyCommit {
         uint256[2] memory claimable = getClaimable(msg.sender);
         if (claimable[0] > 0) {
-            require(bUSDAddress.balanceOf(address(this)) > claimable[0], "BUSD Not enough");
+            require(bUSDAddress.balanceOf(address(this)) >= claimable[0], "BUSD Not enough");
             // available claim busd
             require(
                 bUSDAddress.transfer(msg.sender, claimable[0]),
@@ -484,7 +497,7 @@ contract LaunchVerse is
         }
         if (claimable[1] > 0) {
             // available claim busd
-            require(tokenAddress.balanceOf(address(this)) > claimable[1], "Not enough token");
+            require(tokenAddress.balanceOf(address(this)) >= claimable[1], "Not enough token");
             require(
                 tokenAddress.transfer(msg.sender, claimable[1]),
                 "ERC20 transfer failed - claim token"
@@ -495,9 +508,10 @@ contract LaunchVerse is
     }
 
     /* Admin Withdraw BUSD */
-    function withdrawBusdFunds() external virtual onlyOwner onlyCommit {
+    function withdrawBusdFunds() external virtual onlyOwner onlyCommit onlyUnwithdrawBusd {
         uint256 _balanceBusd = getTotalBusdWinners();
         bUSDAddress.transfer(ADDRESS_WITHDRAW, _balanceBusd);
+        isWithdrawBusd = true;
     }
 
     function getTotalBusdWinners() internal view returns (uint256) {

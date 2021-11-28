@@ -7,22 +7,14 @@ import "./LaunchVerse.sol";
 contract LaunchVerseWhitelist is LaunchVerse {
     using SafeMathUpgradeable for uint256;
 
-    // allow to overwrite default value like individualMaximumAmountBusd, cost to purchase, token fee
-    struct Whitelister {
-        bool active;
-        uint256 maximumAmountBusd;
-        uint256 costRate;
-        uint256 tokenFee;
-    }
-
     // store list to accept to join Pool
-    mapping (address => Whitelister) public whitelist;
+    mapping (address => bool) public whitelist;
     address[] whitelistAddresses;
 
 
     // Getter
     function inWhitelist(address _address) public view returns (bool) {
-        return whitelist[_address].active;
+        return whitelist[_address];
     }
     function countWhitelist() public view returns (uint) {
         return whitelistAddresses.length;
@@ -30,12 +22,11 @@ contract LaunchVerseWhitelist is LaunchVerse {
     /** 
         Add or update to whitelist
      */
-    function addToWhitelist(address _address, uint256 _maximumAmountBusd, uint256 _costRate, uint256 _tokenFee) public virtual onlyAdmin {
-        Whitelister memory _whitelister = Whitelister(true, _maximumAmountBusd, _costRate, _tokenFee);
+    function addToWhitelist(address _address) public virtual onlyAdmin {
         if (!inWhitelist(_address)) {
             whitelistAddresses.push(_address);
         }
-        whitelist[_address] = _whitelister;
+        whitelist[_address] = true;
     }
     function removeFromWhitelist(address _address) external virtual onlyAdmin {
         require(inWhitelist(_address), "Not in whitelist");
@@ -58,17 +49,11 @@ contract LaunchVerseWhitelist is LaunchVerse {
             // whitelistAddresses.length--;
         }
     }
-    function importWhitelist(address[] memory _addresses, uint256[] memory _maximumAmountBusds, uint256[] memory _costRates, uint256[] memory _tokenFees) external virtual onlyAdmin {
+    function importWhitelist(address[] memory _addresses) external virtual onlyAdmin {
         for (uint256 i = 0; i < _addresses.length; i++) {
-            addToWhitelist(
-                _addresses[i],
-                _maximumAmountBusds[i],
-                _costRates[i],
-                _tokenFees[i]
-            );
+            addToWhitelist(_addresses[i]);
         }
     }
-
 
 
     function createSubscription(

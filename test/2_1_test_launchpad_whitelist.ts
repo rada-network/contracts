@@ -4,7 +4,7 @@ import {ethers, upgrades} from "hardhat"
 import {Contract, utils} from "ethers";
 
 describe("Whitelist", async function () {
-
+return;
     let launchPadContract: Contract;
     let tokenContract: Contract;
     let bUSDContract: Contract;
