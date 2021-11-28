@@ -98,14 +98,13 @@ contract LaunchVerse is
     uint256 public individualMinimumAmountBusd; /* Minimum Amount Per Address */
     uint256 public individualMaximumAmountBusd; /* Minimum Amount Per Address */
     uint256 public tokenPrice; /* Token price */
-    uint256 public bUSDAllocated; /* Tokens Allocated */
     uint256 public bUSDForSale; /* Total Raising fund */
     uint256 public rate; /* 1 RIR = 100 BUSD */
     uint256 public tokenFee; /* Platform fee, token keep to platform. Should be zero */
 
     address public ADDRESS_WITHDRAW; /* Address to cashout */
 
-    uint256 public totalTokenForSale; /* calculate when init = bUSDForSale / tokenPrice */
+    uint256 public bUSDAllocated; /* Total Tokens Approved */
 
     ERC20 public tokenAddress; /* Address of token to be sold */
     ERC20 public bUSDAddress; /* Address of bUSD */
@@ -165,9 +164,6 @@ contract LaunchVerse is
         individualMinimumAmountBusd = _individualMinimumAmountBusd;
         individualMaximumAmountBusd = _individualMaximumAmountBusd;
 
-        // caculate the total token
-        totalTokenForSale = bUSDForSale.div(tokenPrice).mul(1e18);
-
         tokenAddress = ERC20(_tokenAddress); 
         // should check null for default mainnet address of busd & rir
         if (_bUSDAddress != address(0)) {
@@ -184,6 +180,14 @@ contract LaunchVerse is
 
         // Grant admin role to a owner
         admins[owner()] = true;
+    }
+
+    /*
+    */
+    function _tokenDeduceFee(uint256 numOfToken) internal view returns (uint256) {
+        if (tokenFee <= 0) return numOfToken;
+        uint256 cent = 100;
+        return numOfToken.mul(cent.mul(1e18) - tokenFee).div(cent.mul(1e18));
     }
 
     /**
@@ -219,7 +223,7 @@ contract LaunchVerse is
     }
 
     /**
-        GETTER allow override in whitelist contract
+        GETTER 
      */
     function minimumAmountBusd() public view returns (uint256) {
         return individualMinimumAmountBusd;
@@ -227,12 +231,8 @@ contract LaunchVerse is
     function maximumAmountBusd() public view returns (uint256) {
         return individualMaximumAmountBusd;
     }
-    // Maximum a wallet amount approved
-    function maximumApprovedAmountBusd(address _address) public view returns (uint256) {
-        return subscription[_address].amountBUSD;
-    }
-    function getTokenFee() public view returns (uint256) {
-        return tokenFee;
+    function getTotalTokenForSale() public view returns (uint256) {
+        return _tokenDeduceFee(bUSDForSale.div(tokenPrice).mul(1e18));
     }
 
     /**
@@ -288,16 +288,11 @@ contract LaunchVerse is
                 "Buyer already exists in the list"
             );
 
-            require(
-                bUSDForSale.sub(_bUSDAllocated) >= 0,
-                "Approved BUSD exceed the amount for sale"
-            );
-
             require(_approvedBusd[i] > 0, "Amount has to be positive");
 
             // need require less than his prefund amount
             require(
-                _approvedBusd[i] <= maximumApprovedAmountBusd(_address[i]),
+                _approvedBusd[i] <= subscription[_address[i]].amountBUSD,
                 "Approved BUSD exceed the amount for a buyer"
             );
 
@@ -307,6 +302,11 @@ contract LaunchVerse is
             // push into winners list address and increase count
             winners.push(_address[i]);
         }
+
+        require(
+            bUSDForSale >= _bUSDAllocated,
+            "Approved BUSD exceed the amount for sale"
+        );
 
         // check if all RIR holder are in winners list
         require(verifySubWinnerHasRIR(), "Some RIR investers are not in winners list");
@@ -461,9 +461,9 @@ contract LaunchVerse is
     /**
         Claim totken
      */
-    function getTotalTokenForWinner(address _winner) external view returns (uint256)  {
+    function getTotalTokenForWinner(address _winner) public view returns (uint256)  {
         Order memory _winnerOrder = subscription[_winner];
-        return _winnerOrder.approvedBUSD.mul(totalTokenForSale).div(bUSDForSale);
+        return _winnerOrder.approvedBUSD.mul(getTotalTokenForSale()).div(bUSDForSale);
     }
     
     function getClaimable(address _address) public view returns (uint256[2] memory) {
@@ -474,16 +474,12 @@ contract LaunchVerse is
 
         // check if available token to claim
         uint256 _deposited =  totalTokenDeposited;
-        if (_deposited > totalTokenForSale) _deposited = totalTokenForSale; // cannot eceeds total sale token
+        uint256 _maxDeposited = getTotalTokenForSale();
+        if (_deposited > _maxDeposited) _deposited = _maxDeposited; // cannot eceeds total sale token
 
         uint256 _tokenClaimable = _order.approvedBUSD.mul(_deposited).div(bUSDForSale);
-        uint256 _tokenFee = getTokenFee();
-        uint256 cent = 100;
-        if (_tokenFee != 0) {
-            _tokenClaimable = _tokenClaimable.mul(cent.mul(1e18) - _tokenFee).div(cent.mul(1e18));
-        }
         claimable[1] = _tokenClaimable.sub(_order.claimedToken);
-        return claimable;        
+        return claimable;
     }
 
     function claim() external payable onlyCommit {
@@ -500,6 +496,8 @@ contract LaunchVerse is
             subscription[msg.sender].refundedBUSD = claimable[0];
         }
         if (claimable[1] > 0) {
+            // make sure not out of max
+            require(getTotalTokenForWinner(msg.sender) >= subscription[msg.sender].claimedToken + claimable[1], "Cannot claim more token than approved");
             // available claim busd
             require(tokenAddress.balanceOf(address(this)) >= claimable[1], "Not enough token");
             require(
@@ -527,6 +525,7 @@ contract LaunchVerse is
     /* require total token deposit > total token of winners
     */
     function withdrawTokensRemain() external payable onlyOwner onlyCommit {
+
     }
 
     function balanceTokens() external view returns (uint256) {

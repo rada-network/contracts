@@ -6,7 +6,7 @@ import { solidity } from 'ethereum-waffle';
 
 use(solidity);
 
-describe("LaunchVerse", async function () {
+describe("LaunchVerse With 10% Token Fee", async function () {
 
     let launchPadContract: Contract;
     let tokenContract: Contract;
@@ -18,7 +18,7 @@ describe("LaunchVerse", async function () {
     let addr3: any;
     let addr4: any;
 
-    const TOKEN_FEE = 0;
+    const TOKEN_FEE = 10;
 
     const parseEther = (num: number) => utils.parseEther(num.toFixed(18))
     const formatEther = (num: number) => utils.formatEther(parseEther(num))
@@ -310,7 +310,7 @@ describe("LaunchVerse", async function () {
                                     it('Deposit Success', async () => {
                                         // total sale token: 1000/1 = 1000
                                         let totalTokenForSale = await launchPadContract.getTotalTokenForSale();
-                                        expect(utils.formatEther(totalTokenForSale)).to.equal("1000.0");
+                                        expect(utils.formatEther(totalTokenForSale)).to.equal("900.0");
 
                                         let owner_tokenAmount = await tokenContract.balanceOf(owner.address);
                                         expect(utils.formatEther(owner_tokenAmount)).to.equal("0.0");
@@ -372,32 +372,32 @@ describe("LaunchVerse", async function () {
 
                                         // check claimable
                                         claimable = await launchPadContract.getClaimable(addr1.address);
-                                        expectClaimable(claimable, [0, 450]);
+                                        expectClaimable(claimable, [0, 400]);
                                         
                                         // for addr2
                                         claimable = await launchPadContract.getClaimable(addr2.address);
-                                        expectClaimable(claimable, [0, 200]);
+                                        expectClaimable(claimable, [0, 180]);
 
                                         // claim for addr2, all it's token take
                                         await launchPadContract.connect(addr2).claim();
                                         let addr2_tokenAmount = await tokenContract.balanceOf(addr2.address);
-                                        expect(utils.formatEther(addr2_tokenAmount)).to.equal("200.0");
+                                        expect(utils.formatEther(addr2_tokenAmount)).to.equal("180.0");
                                         launchPadContract_tokenAmount = await tokenContract.balanceOf(launchPadContract.address);
-                                        expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("799850.0");
+                                        expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("799870.0");
 
                                         // reclaim for addr2, nothing change
                                         await launchPadContract.connect(addr2).claim();
                                         addr2_tokenAmount = await tokenContract.balanceOf(addr2.address);
-                                        expect(utils.formatEther(addr2_tokenAmount)).to.equal("200.0");
+                                        expect(utils.formatEther(addr2_tokenAmount)).to.equal("180.0");
                                         launchPadContract_tokenAmount = await tokenContract.balanceOf(launchPadContract.address);
-                                        expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("799850.0");
+                                        expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("799870.0");
 
                                         // claim token addr1, get last 450
                                         await launchPadContract.connect(addr1).claim();
                                         addr2_tokenAmount = await tokenContract.balanceOf(addr1.address);
-                                        expect(utils.formatEther(addr2_tokenAmount)).to.equal("500.0");
+                                        expect(utils.formatEther(addr2_tokenAmount)).to.equal("450.0");
                                         launchPadContract_tokenAmount = await tokenContract.balanceOf(launchPadContract.address);
-                                        expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("799400.0");
+                                        expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("799470.0");
                                         
 
                                         describe("Withdraw Token", async () => {
