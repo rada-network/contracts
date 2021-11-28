@@ -69,7 +69,15 @@ contract LaunchVerse is
         _;
     }
 
+
+    modifier onlyUnwithdrawBusd() {
+        require(!isWithdrawBusd, "You have withdrawn Busd");
+        _;
+    }
+    
+
     bool public isCommit;
+    bool public isWithdrawBusd;
     uint256 public startDate; /* Start Date  - https://www.epochconverter.com/ */
     uint256 public endDate; /* End Date - https://www.epochconverter.com/ */
     uint256 public individualMinimumAmountBusd; /* Minimum Amount Per Address */
@@ -135,6 +143,7 @@ contract LaunchVerse is
         rate = 100;
         feeTax = _feeTax;
         isCommit = false;
+        isWithdrawBusd = false;
         ADDRESS_WITHDRAW = 0xdDDDbebEAD284030Ba1A59cCD99cE34e6d5f4C96;
         individualMinimumAmountBusd = _individualMinimumAmountBusd;
         individualMaximumAmountBusd = _individualMaximumAmountBusd;
@@ -308,7 +317,7 @@ contract LaunchVerse is
 
 
     /**
-     * 
+     * Create Subscription
      */
     function createSubscription(
         uint256 _amountBusd,
@@ -370,11 +379,6 @@ contract LaunchVerse is
         }
 
         if (_amountBusd > 0) {
-            require(
-                bUSDAddress.balanceOf(msg.sender) >= _amountBusd,
-                "You dont have enough Busd Token"
-            );
-
             require(
                 bUSDAddress.transferFrom(
                     msg.sender,
@@ -468,9 +472,10 @@ contract LaunchVerse is
     }
 
     /* Admin Withdraw BUSD */
-    function withdrawBusdFunds() external virtual onlyOwner onlyCommit {
+    function withdrawBusdFunds() external virtual onlyOwner onlyCommit onlyUnwithdrawBusd {
         uint256 _balanceBusd = getTotalBusdWinners();
         bUSDAddress.transfer(ADDRESS_WITHDRAW, _balanceBusd);
+        isWithdrawBusd = true;
     }
 
     function getTotalBusdWinners() internal view returns (uint256) {
