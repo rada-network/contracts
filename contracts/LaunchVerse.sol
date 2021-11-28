@@ -445,7 +445,7 @@ contract LaunchVerse is
     function claim() external payable onlyCommit {
         uint256[2] memory claimable = getClaimable(msg.sender);
         if (claimable[0] > 0) {
-            require(bUSDAddress.balanceOf(address(this)) > claimable[0], "BUSD Not enough");
+            require(bUSDAddress.balanceOf(address(this)) >= claimable[0], "BUSD Not enough");
             // available claim busd
             require(
                 bUSDAddress.transfer(msg.sender, claimable[0]),
@@ -457,7 +457,7 @@ contract LaunchVerse is
         }
         if (claimable[1] > 0) {
             // available claim busd
-            require(tokenAddress.balanceOf(address(this)) > claimable[1], "Not enough token");
+            require(tokenAddress.balanceOf(address(this)) >= claimable[1], "Not enough token");
             require(
                 tokenAddress.transfer(msg.sender, claimable[1]),
                 "ERC20 transfer failed - claim token"
