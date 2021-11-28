@@ -388,8 +388,6 @@ describe("LaunchVerse", async function () {
                                         expect(utils.formatEther(addr2_tokenAmount)).to.equal("500.0");
                                         launchPadContract_tokenAmount = await tokenContract.balanceOf(launchPadContract.address);
                                         expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("799400.0");
-
-
                                         
 
                                         describe("Withdraw Token", async () => {
@@ -400,6 +398,9 @@ describe("LaunchVerse", async function () {
 
                                                 let addrWithdraw_bUSDAmount = await bUSDContract.balanceOf("0xdDDDbebEAD284030Ba1A59cCD99cE34e6d5f4C96");
                                                 expect(utils.formatEther(addrWithdraw_bUSDAmount)).to.equal("700.0");
+
+                                                // Test have withdrawn
+                                                await expect(launchPadContract.withdrawBusdFunds()).to.revertedWith("You have withdrawn Busd");
                                             })
 
                                             // it("Withdraw Remain Token", async () => {
