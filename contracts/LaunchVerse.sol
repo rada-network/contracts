@@ -530,7 +530,7 @@ contract LaunchVerse is
     /* Admin withdraw token remain
     /* require total token deposit > total token of winners
     */
-    function getTokenRemain() public view onlyOwner onlyCommit returns (uint256) {
+    function getUnsoldTokens() public view onlyOwner onlyCommit returns (uint256) {
         // get total claimed token
         uint256 _totalClaimedToken;
         for (uint256 i = 0; i < subscribers.length; i++) {
@@ -541,8 +541,8 @@ contract LaunchVerse is
         return _remain > 0 ? _remain : 0;
     }
 
-    function withdrawTokensRemain() external payable onlyOwner onlyCommit {
-        uint256 _remain = getTokenRemain();
+    function withdrawUnsoldTokens() external payable onlyOwner onlyCommit {
+        uint256 _remain = getUnsoldTokens();
         require(_remain > 0, "No remain token");
         require(tokenAddress.transfer(ADDRESS_WITHDRAW, _remain), "ERC20 Cannot widthraw remaining token");
     }

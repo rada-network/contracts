@@ -400,10 +400,10 @@ describe("LaunchVerse", async function () {
                                         expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("799400.0");
 
                                         // check remain token to withdraw
-                                        let remainToken = await launchPadContract.connect(owner).getTokenRemain();
+                                        let remainToken = await launchPadContract.connect(owner).getUnsoldTokens();
                                         expect(utils.formatEther(remainToken)).to.equal("799400.0");
                                         // withdraw
-                                        await launchPadContract.withdrawTokensRemain();
+                                        await launchPadContract.withdrawUnsoldTokens();
                                         launchPadContract_tokenAmount = await tokenContract.balanceOf(launchPadContract.address);
                                         expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("0.0");
                                         
