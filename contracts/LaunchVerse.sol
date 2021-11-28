@@ -234,6 +234,9 @@ contract LaunchVerse is
     function getTotalTokenForSale() public view returns (uint256) {
         return _tokenDeduceFee(bUSDForSale.div(tokenPrice).mul(1e18));
     }
+    function getTotalTokenSold() public view returns (uint256) {
+        return _tokenDeduceFee(bUSDAllocated.div(tokenPrice).mul(1e18));
+    }
 
     /**
      * Check Buyer is Subscriber - just check in the subscription list
@@ -512,7 +515,10 @@ contract LaunchVerse is
     /* Admin Withdraw BUSD */
     function withdrawBusdFunds() external virtual onlyOwner onlyCommit onlyUnwithdrawBusd {
         uint256 _balanceBusd = getTotalBusdWinners();
-        bUSDAddress.transfer(ADDRESS_WITHDRAW, _balanceBusd);
+        require(
+            bUSDAddress.transfer(ADDRESS_WITHDRAW, _balanceBusd),
+            "ERC20 Cannot withdraw fund"
+        );
         isWithdrawBusd = true;
     }
 
@@ -524,11 +530,24 @@ contract LaunchVerse is
     /* Admin withdraw token remain
     /* require total token deposit > total token of winners
     */
-    function withdrawTokensRemain() external payable onlyOwner onlyCommit {
-
+    function getTokenRemain() public view onlyOwner onlyCommit returns (uint256) {
+        // get total claimed token
+        uint256 _totalClaimedToken;
+        for (uint256 i = 0; i < subscribers.length; i++) {
+            _totalClaimedToken += subscription[subscribers[i]].claimedToken;
+        }
+        uint256 _tokenBalance = balanceTokens();
+        uint256 _remain = _tokenBalance.add(_totalClaimedToken).sub(getTotalTokenSold());
+        return _remain > 0 ? _remain : 0;
     }
 
-    function balanceTokens() external view returns (uint256) {
+    function withdrawTokensRemain() external payable onlyOwner onlyCommit {
+        uint256 _remain = getTokenRemain();
+        require(_remain > 0, "No remain token");
+        require(tokenAddress.transfer(ADDRESS_WITHDRAW, _remain), "ERC20 Cannot widthraw remaining token");
+    }
+
+    function balanceTokens() public view returns (uint256) {
         return tokenAddress.balanceOf(address(this));
     }
 
