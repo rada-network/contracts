@@ -3,6 +3,8 @@ import { ethers, upgrades } from "hardhat"
 import { constants, Contract, utils, BigNumberish, BigNumber } from "ethers"
 import { expect, use, util } from 'chai';
 import { solidity } from 'ethereum-waffle';
+import { Address } from "cluster";
+import exp from "constants";
 
 use(solidity);
 
@@ -23,6 +25,8 @@ describe("LaunchVerse", async function () {
     const parseEther = (num: number) => utils.parseEther(num.toFixed(18))
     const formatEther = (num: number) => utils.formatEther(parseEther(num))
 
+    let tokenAddress: String;
+
     beforeEach('Setup', async function () {
         [owner, addr1, addr2, addr3, addr4] = await ethers.getSigners();
 
@@ -37,7 +41,7 @@ describe("LaunchVerse", async function () {
         const tokenContractFactory = await ethers.getContractFactory("ERC20Token");
         tokenContract = await tokenContractFactory.deploy("TOKEN", "TOKEN");
         tokenContract = await tokenContract.deployed();
-        const tokenAddress = tokenContract.address;
+        tokenAddress = tokenContract.address;
         // console.log('Token Project: ', tokenAddress);
 
         // Token RIR
@@ -66,7 +70,6 @@ describe("LaunchVerse", async function () {
         };
 
         launchPadContract = await upgrades.deployProxy(launchPadFactory, [
-            paramLaunchpad._tokenAddress,
             paramLaunchpad._bUSDAddress,
             paramLaunchpad._rirAddress,
             paramLaunchpad._tokenPrice,
@@ -82,6 +85,8 @@ describe("LaunchVerse", async function () {
         launchPadContract = await launchPadContract.deployed();
         const launchPadAddress = launchPadContract.address;
         // console.log('LaunchPad Contract: ', launchPadAddress);
+
+        // 
 
         // Mint token of project to launchPad
         // await tokenContract.mint(launchPadAddress, utils.parseEther("1000000"));
@@ -319,6 +324,12 @@ describe("LaunchVerse", async function () {
                                         expect(utils.formatEther(owner_tokenAmount)).to.equal("1000000.0");
                                         let launchPadContract_tokenAmount = await tokenContract.balanceOf(launchPadContract.address);
                                         expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("0.0");
+
+                                        // update token address
+                                        await launchPadContract.connect(owner).setTokenAddress(tokenAddress);
+                                        // verify token address is set
+                                        expect(await launchPadContract.tokenAddress()).to.equal(tokenAddress);
+                                        await launchPadContract.commitTokenAddress();
 
                                         await tokenContract.approve(launchPadContract.address, constants.MaxUint256);
                                         await launchPadContract.deposit(utils.parseEther("100"));

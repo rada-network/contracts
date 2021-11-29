@@ -23,6 +23,8 @@ describe("LaunchVerse With 10% Token Fee", async function () {
     const parseEther = (num: number) => utils.parseEther(num.toFixed(18))
     const formatEther = (num: number) => utils.formatEther(parseEther(num))
 
+    let tokenAddress: String;
+
     beforeEach('Setup', async function () {
         [owner, addr1, addr2, addr3, addr4] = await ethers.getSigners();
 
@@ -37,7 +39,7 @@ describe("LaunchVerse With 10% Token Fee", async function () {
         const tokenContractFactory = await ethers.getContractFactory("ERC20Token");
         tokenContract = await tokenContractFactory.deploy("TOKEN", "TOKEN");
         tokenContract = await tokenContract.deployed();
-        const tokenAddress = tokenContract.address;
+        tokenAddress = tokenContract.address;
         // console.log('Token Project: ', tokenAddress);
 
         // Token RIR
@@ -66,7 +68,7 @@ describe("LaunchVerse With 10% Token Fee", async function () {
         };
 
         launchPadContract = await upgrades.deployProxy(launchPadFactory, [
-            paramLaunchpad._tokenAddress,
+            //paramLaunchpad._tokenAddress,
             paramLaunchpad._bUSDAddress,
             paramLaunchpad._rirAddress,
             paramLaunchpad._tokenPrice,
@@ -319,6 +321,13 @@ describe("LaunchVerse With 10% Token Fee", async function () {
                                         expect(utils.formatEther(owner_tokenAmount)).to.equal("1000000.0");
                                         let launchPadContract_tokenAmount = await tokenContract.balanceOf(launchPadContract.address);
                                         expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("0.0");
+
+                                        // update token address
+                                        await launchPadContract.connect(owner).setTokenAddress(tokenAddress);
+                                        // verify token address is set
+                                        expect(await launchPadContract.tokenAddress()).to.equal(tokenAddress);
+                                        // commit set
+                                        await launchPadContract.commitTokenAddress();
 
                                         await tokenContract.approve(launchPadContract.address, constants.MaxUint256);
                                         await launchPadContract.deposit(utils.parseEther("100"));

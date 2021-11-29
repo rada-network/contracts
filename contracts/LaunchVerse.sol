@@ -89,6 +89,17 @@ contract LaunchVerse is
         require(!isWithdrawBusd, "You have withdrawn Busd");
         _;
     }
+
+    /* State for setup Token Address */
+    bool private isTokenAddressSet;
+    modifier onlyTokenNotSet() {
+        require(!isTokenAddressSet, "Token Address has set already");
+        _;
+    }
+    modifier onlyTokenSet() {
+        require(isTokenAddressSet, "Token Address has not set");
+        _;
+    }
     
 
     bool public isCommit;
@@ -102,6 +113,8 @@ contract LaunchVerse is
     uint256 public rate; /* 1 RIR = 100 BUSD */
     uint256 public tokenFee; /* Platform fee, token keep to platform. Should be zero */
 
+    uint256 public totalRIRAllocation; /* Maximum RIR can be used for all, by default is 80% of sale allocation */
+
     address public ADDRESS_WITHDRAW; /* Address to cashout */
 
     uint256 public bUSDAllocated; /* Total Tokens Approved */
@@ -111,7 +124,7 @@ contract LaunchVerse is
     ERC20 public rirAddress; /* Address of RIR */
 
     function initialize(
-        address _tokenAddress,
+        /* address _tokenAddress, */ // Will setup later, not available at the Pool start
         address _bUSDAddress,
         address _rirAddress,
         uint256 _tokenPrice, // Price Token (Ex: 1 TOKEN = 0.01 BUSD)
@@ -164,19 +177,12 @@ contract LaunchVerse is
         individualMinimumAmountBusd = _individualMinimumAmountBusd;
         individualMaximumAmountBusd = _individualMaximumAmountBusd;
 
-        tokenAddress = ERC20(_tokenAddress); 
-        // should check null for default mainnet address of busd & rir
-        if (_bUSDAddress != address(0)) {
-            bUSDAddress = ERC20(_bUSDAddress);
-        } else {
-            //bUSDAddress = 0xe9e7cea3dedca5984780bafc599bd69add087d56; // Binance-Peg BUSD Token on mainnet
-        }
+        // tokenAddress = ERC20(_tokenAddress); // 
+        bUSDAddress = ERC20(_bUSDAddress);
+        rirAddress = ERC20(_rirAddress);
 
-        if (_rirAddress != address(0)) {
-            rirAddress = ERC20(_rirAddress);
-        } else {
-            //rirAddress = 0x30FB969AD2BFCf0f3136362cccC0bCB99a7193bC; // RIR Token on mainnet
-        }
+        // Default total RIR allocation: 80% of sale allocation
+        totalRIRAllocation = bUSDForSale.div(rate).mul(80).div(100);
 
         // Grant admin role to a owner
         admins[owner()] = true;
@@ -253,9 +259,27 @@ contract LaunchVerse is
     }
 
     /**
+     * Setup Token Address
+     */
+    function setTokenAddress(address _tokenAddress) external onlyTokenNotSet onlyAdmin {
+        tokenAddress = ERC20(_tokenAddress); 
+    }
+    function commitTokenAddress() external onlyTokenNotSet onlyOwner {
+        isTokenAddressSet = true; 
+    }
+
+    /**
+     * UPDATE Total RIR Allocation - by default is 80% of all allocation
+     */
+    function updateRIRAllocation(uint percentage) external onlyOwner {
+        totalRIRAllocation = bUSDForSale.div(rate).mul(percentage).div(100);
+    }
+
+
+    /**
      * Set Wins is empty
      **/
-    function setEmptyWins() external onlyOwner onlyUncommit {
+    function setEmptyWins() external onlyAdmin onlyUncommit {
         require(winCount() > 0);
         require(winners.length > 0);
         for (uint256 i = 0; i < subscribers.length; i++) {
@@ -277,7 +301,7 @@ contract LaunchVerse is
     function importWinners(
         address[] calldata _address,
         uint256[] calldata _approvedBusd
-    ) external virtual onlyOwner winEmpty {
+    ) external virtual onlyAdmin winEmpty {
         uint256 _bUSDAllocated = 0;
 
         for (uint256 i = 0; i < _address.length; i++) {
@@ -397,6 +421,12 @@ contract LaunchVerse is
                 "You dont have enough RIR Token"
             );
 
+            // check if over RIR allocation fill
+            require(
+                totalSubRIR + _amountRIR <= totalRIRAllocation,
+                "Eceeds Total RIR Allocation"
+            );
+
             // Prevent misunderstanding: only RIR is enough
             // (_amountRIR + subscription[msg.sender].amountRIR).mul(rate) <= need include prefunded RIR
             require(
@@ -448,7 +478,7 @@ contract LaunchVerse is
     /* Deposit Token,
      * Call by admin
     */
-    function deposit(uint256 _amount) external payable onlyOwner {
+    function deposit(uint256 _amount) external payable onlyTokenSet onlyOwner {
         require(_amount > 0, "Amount has to be positive");
         require(
             tokenAddress.transferFrom(msg.sender, address(this), _amount),
@@ -476,12 +506,14 @@ contract LaunchVerse is
         claimable[0] = _order.amountBUSD - _order.approvedBUSD - _order.refundedBUSD;
 
         // check if available token to claim
-        uint256 _deposited =  totalTokenDeposited;
-        uint256 _maxDeposited = getTotalTokenForSale();
-        if (_deposited > _maxDeposited) _deposited = _maxDeposited; // cannot eceeds total sale token
+        if (isTokenAddressSet) {
+            uint256 _deposited =  totalTokenDeposited;
+            uint256 _maxDeposited = getTotalTokenForSale();
+            if (_deposited > _maxDeposited) _deposited = _maxDeposited; // cannot eceeds total sale token
 
-        uint256 _tokenClaimable = _order.approvedBUSD.mul(_deposited).div(bUSDForSale);
-        claimable[1] = _tokenClaimable.sub(_order.claimedToken);
+            uint256 _tokenClaimable = _order.approvedBUSD.mul(_deposited).div(bUSDForSale);
+            claimable[1] = _tokenClaimable.sub(_order.claimedToken);
+        }
         return claimable;
     }
 
@@ -498,7 +530,7 @@ contract LaunchVerse is
             // update refunded
             subscription[msg.sender].refundedBUSD = claimable[0];
         }
-        if (claimable[1] > 0) {
+        if (isTokenAddressSet && claimable[1] > 0) {
             // make sure not out of max
             require(getTotalTokenForWinner(msg.sender) >= subscription[msg.sender].claimedToken + claimable[1], "Cannot claim more token than approved");
             // available claim busd
