@@ -2,9 +2,9 @@ module.exports = {
     contractType: "LaunchVerseWhitelist",
     deploy: {
         title: "DFH for Raders",
-        startDate: "2021/11/30 05:00:00",
-        endDate: "2021/11/30 15:00:00",
-        minAmountBusd: "100",
+        startDate: "2021/11/30 05:00:00 GMT+00:00",
+        endDate: "2021/11/30 15:00:00 GMT+00:00",
+         minAmountBusd: "100",
         maxAmountBusd: "500",
         price: "0.04",
         raise: "10300",
