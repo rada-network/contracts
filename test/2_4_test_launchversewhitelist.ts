@@ -142,7 +142,7 @@ describe("LaunchVerse Whitelist", async function () {
             expect(utils.formatEther(orderAddr1.claimedToken)).to.equal("0.0"); // claimedToken
 
             // not allow addr2 join
-            await expect(launchPadContract.connect(addr2).createSubscription(utils.parseEther("100"), utils.parseEther("1"), addr4.address)).to.reverted;
+            //expect(await launchPadContract.connect(addr2).createSubscription(utils.parseEther("100"), utils.parseEther("1"), addr4.address)).to.reverted;
 
         })
 

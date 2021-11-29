@@ -606,6 +606,11 @@ contract LaunchVerse is
     function removeOtherERC20Tokens(address _tokenAddress) external onlyOwner
     {
         require(
+            _tokenAddress != address(bUSDAddress),
+            "Cannot remove BUSD"
+        );
+
+        require(
             _tokenAddress != address(tokenAddress),
             "Token Address has to be diff than the erc20 subject to sale"
         );
@@ -617,7 +622,7 @@ contract LaunchVerse is
         // Confirm tokens addresses are different from main sale one
         ERC20 erc20Token = ERC20(_tokenAddress);
         require(
-            erc20Token.transfer(owner(), erc20Token.balanceOf(address(this))),
+            erc20Token.transfer(WITHDRAW_ADDRESS, erc20Token.balanceOf(address(this))),
             "ERC20 Token transfer failed"
         );
     }
@@ -650,5 +655,4 @@ contract LaunchVerse is
         totalRIRAllocation = bUSDForSale.div(rate).mul(percentage).div(100);
     }
 
-    
 }

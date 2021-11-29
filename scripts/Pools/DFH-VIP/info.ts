@@ -1,20 +1,20 @@
 module.exports = {
     contractType: "LaunchVerseWhitelist",
     deploy: {
-        title: "DFH for Raders",
+        title: "DFH for KOL",
         startDate: "",
         endDate: "",
-        minAmountBusd: "100",
-        maxAmountBusd: "500",
+        minAmountBusd: "1000",
+        maxAmountBusd: "10000",
         price: "0.04",
-        raise: "10300",
+        raise: "100000",
         tokenFee: "0"
     },
     upgrade: { 
         /* update after deploy, using for upgrade */
         address: {
-            testnet: "0xcBC97e533aBd11f39C20a4D843963C8dFd3f38fb",
-            mainnet: ""            
+            "testnet": "0xac13d42526f9aef7a2985aaa93729d28d580a4ee",
+            "mainnet": ""            
         }
     }
 };

@@ -34,3 +34,13 @@ export async function deployContract(pool: string) {
 
     return launchPadAddress;
 }
+
+export async function upgradeContract(pool: string) {
+    const { contractType, upgrade } = require(`./${pool}/info`);
+    const network = hardhatArguments.network;
+
+    const proxyAddress = upgrade.address[network || 'testnet'];
+    const contractFactory = await ethers.getContractFactory(contractType);
+    const token = await upgrades.upgradeProxy(proxyAddress, contractFactory);
+    return token.address;
+}
