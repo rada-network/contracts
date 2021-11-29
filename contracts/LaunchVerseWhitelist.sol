@@ -22,13 +22,13 @@ contract LaunchVerseWhitelist is LaunchVerse {
     /** 
         Add or update to whitelist
      */
-    function addToWhitelist(address _address) public virtual onlyAdmin {
+    function addToWhitelist(address _address) public virtual onlyUncommit onlyAdmin {
         if (!inWhitelist(_address)) {
             whitelistAddresses.push(_address);
         }
         whitelist[_address] = true;
     }
-    function removeFromWhitelist(address _address) external virtual onlyAdmin {
+    function removeFromWhitelist(address _address) external virtual onlyUncommit onlyAdmin {
         require(inWhitelist(_address), "Not in whitelist");
         delete whitelist[_address];
         // takeout from array of address
@@ -49,7 +49,7 @@ contract LaunchVerseWhitelist is LaunchVerse {
             // whitelistAddresses.length--;
         }
     }
-    function importWhitelist(address[] memory _addresses) external virtual onlyAdmin {
+    function importWhitelist(address[] memory _addresses) external virtual onlyUncommit onlyAdmin {
         for (uint256 i = 0; i < _addresses.length; i++) {
             addToWhitelist(_addresses[i]);
         }
