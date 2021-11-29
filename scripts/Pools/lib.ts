@@ -1,9 +1,9 @@
 import { ethers, upgrades, hardhatArguments } from "hardhat";
 import { utils } from "ethers";
 
-export async function deployContract(pool: string) {
+export async function deployContract(poolpath: string) {
     //contractType: string, deployData: any, commonData: any
-    const { contractType, deploy } = require(`./${pool}/info`);
+    const { contractType, deploy } = require(`${poolpath}/info`);
     const network = hardhatArguments.network;
     const commonData = require("./common")[network || 'testnet']
 
@@ -35,11 +35,12 @@ export async function deployContract(pool: string) {
     return launchPadAddress;
 }
 
-export async function upgradeContract(pool: string) {
-    const { contractType, upgrade } = require(`./${pool}/info`);
+export async function upgradeContract(poolpath: string) {
+    const { contractType, upgrade } = require(`${poolpath}/info`);
     const network = hardhatArguments.network;
 
     const proxyAddress = upgrade.address[network || 'testnet'];
+return proxyAddress;    
     const contractFactory = await ethers.getContractFactory(contractType);
     const token = await upgrades.upgradeProxy(proxyAddress, contractFactory);
     return token.address;

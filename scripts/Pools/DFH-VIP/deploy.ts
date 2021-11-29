@@ -1,6 +1,8 @@
 import { deployContract } from "../lib"
 
 async function main() {
+    console.log('xx:', __dirname);
+    return '';
     let launchPadAddress = await deployContract ('DFH-VIP')
     console.log('LaunchPad Contract: ', launchPadAddress);
 }

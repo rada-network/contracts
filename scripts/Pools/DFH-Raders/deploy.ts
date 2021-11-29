@@ -1,7 +1,7 @@
 import { deployContract } from "../lib"
 
 async function main() {
-    let launchPadAddress = await deployContract ('DFH-Raders')
+    let launchPadAddress = await deployContract (__dirname)
     console.log('LaunchPad Contract: ', launchPadAddress);
 }
 

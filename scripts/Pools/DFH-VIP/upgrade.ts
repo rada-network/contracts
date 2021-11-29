@@ -1,7 +1,7 @@
 import { upgradeContract } from "../lib"
 
 async function main() {
-    let launchPadAddress = await upgradeContract ('DFH-VIP')
+    let launchPadAddress = await upgradeContract (__dirname)
     console.log('Upgrade Contract: ', launchPadAddress);
 }
 
