@@ -340,9 +340,9 @@ describe("LaunchVerse With 10% Token Fee", async function () {
                                         // total sale 1000, invest addr1 500, addr2 200, no refund
                                         // max need deposit 700
                                         // deposit 70 => addr1: 50, addr2 20
-                                        
+
                                         let orderAddr1 = await launchPadContract.connect(addr1).getOrderSubscriber(addr1.address);
-                                        
+
                                         const expectClaimable = (claimable: BigNumberish[], expected: number[]) => {
                                             expect(utils.formatEther(claimable[0])).to.equal(formatEther(expected[0]));
                                             expect(utils.formatEther(claimable[1])).to.equal(formatEther(expected[1]));
@@ -359,7 +359,7 @@ describe("LaunchVerse With 10% Token Fee", async function () {
                                             'claim',
                                             utils.formatEther(claimable[1]),
                                             utils.formatEther(await tokenContract.balanceOf(launchPadContract.address))
-                                        )                                        
+                                        )
                                         await launchPadContract.connect(addr1).claim();
                                         // make sure the claimed info update, balance is reduce
                                         orderAddr1 = await launchPadContract.connect(addr1).getOrderSubscriber(addr1.address);
@@ -382,7 +382,7 @@ describe("LaunchVerse With 10% Token Fee", async function () {
                                         // check claimable
                                         claimable = await launchPadContract.getClaimable(addr1.address);
                                         expectClaimable(claimable, [0, 400]);
-                                        
+
                                         // for addr2
                                         claimable = await launchPadContract.getClaimable(addr2.address);
                                         expectClaimable(claimable, [0, 180]);
@@ -407,16 +407,26 @@ describe("LaunchVerse With 10% Token Fee", async function () {
                                         expect(utils.formatEther(addr2_tokenAmount)).to.equal("450.0");
                                         launchPadContract_tokenAmount = await tokenContract.balanceOf(launchPadContract.address);
                                         expect(utils.formatEther(launchPadContract_tokenAmount)).to.equal("799470.0");
-                                        
+
 
                                         describe("Withdraw Token", async () => {
                                             it("Withdraw Busd", async () => {
+
+                                                // update withdraw address
+                                                await launchPadContract.connect(owner).setWithdrawAddress(addr4.address);
+                                                // verify token address is set
+                                                let withdrawAddress = await launchPadContract.WITHDRAW_ADDRESS()
+                                                expect(withdrawAddress).to.equal(addr4.address);
+                                                await launchPadContract.commitWithdrawAddress();
+
+                                                let currentBalance = await bUSDContract.balanceOf(withdrawAddress);
+
                                                 await launchPadContract.withdrawBusdFunds();
                                                 let launchPadContract_bUSDAmount = await bUSDContract.balanceOf(launchPadContract.address);
                                                 expect(utils.formatEther(launchPadContract_bUSDAmount)).to.equal("0.0");
 
-                                                let addrWithdraw_bUSDAmount = await bUSDContract.balanceOf("0xdDDDbebEAD284030Ba1A59cCD99cE34e6d5f4C96");
-                                                expect(utils.formatEther(addrWithdraw_bUSDAmount)).to.equal("700.0");
+                                                let addrWithdraw_bUSDAmount = await bUSDContract.balanceOf(withdrawAddress);
+                                                expect(utils.formatEther(addrWithdraw_bUSDAmount.sub(currentBalance))).to.equal("700.0");
 
                                                 // Test have withdrawn
                                                 await expect(launchPadContract.withdrawBusdFunds()).to.revertedWith("You have withdrawn Busd");
@@ -438,7 +448,7 @@ describe("LaunchVerse With 10% Token Fee", async function () {
                         })
                     });
                 });
-                
+
                 it('Cannot Import', async function () {
                     const importWinners = launchPadContract.connect(owner).importWinners(
                         [addr1.address, addr1.address, addr2.address],

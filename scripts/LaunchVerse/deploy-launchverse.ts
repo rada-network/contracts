@@ -40,7 +40,7 @@ async function main() {
     };
 
     let launchPadContract = await upgrades.deployProxy(launchPadFactory, [
-        paramLaunchpad._tokenAddress,
+        // paramLaunchpad._tokenAddress,
         paramLaunchpad._bUSDAddress,
         paramLaunchpad._rirAddress,
         paramLaunchpad._tokenPrice,

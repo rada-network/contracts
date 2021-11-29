@@ -413,6 +413,16 @@ describe("LaunchVerse", async function () {
                                         // check remain token to withdraw
                                         let remainToken = await launchPadContract.connect(owner).getUnsoldTokens();
                                         expect(utils.formatEther(remainToken)).to.equal("799400.0");
+
+                                        // update withdraw address
+                                        await launchPadContract.connect(owner).setWithdrawAddress(owner.address);
+                                        // verify token address is set
+                                        let withdrawAddress = await launchPadContract.WITHDRAW_ADDRESS();
+                                        expect(withdrawAddress).to.equal(owner.address);
+                                        await launchPadContract.commitWithdrawAddress();
+                                        // verify cannot change
+                                        //expect(await launchPadContract.setWithdrawAddress(addr1.address)).to.reverted;
+
                                         // withdraw
                                         await launchPadContract.withdrawUnsoldTokens();
                                         launchPadContract_tokenAmount = await tokenContract.balanceOf(launchPadContract.address);
@@ -425,7 +435,7 @@ describe("LaunchVerse", async function () {
                                                 let launchPadContract_bUSDAmount = await bUSDContract.balanceOf(launchPadContract.address);
                                                 expect(utils.formatEther(launchPadContract_bUSDAmount)).to.equal("0.0");
 
-                                                let addrWithdraw_bUSDAmount = await bUSDContract.balanceOf("0xdDDDbebEAD284030Ba1A59cCD99cE34e6d5f4C96");
+                                                let addrWithdraw_bUSDAmount = await bUSDContract.balanceOf(withdrawAddress);
                                                 expect(utils.formatEther(addrWithdraw_bUSDAmount)).to.equal("700.0");
 
                                                 // Test have withdrawn
