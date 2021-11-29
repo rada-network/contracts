@@ -2,8 +2,8 @@ module.exports = {
     contractType: "LaunchVerseWhitelist",
     deploy: {
         title: "DFH for KOL",
-        startDate: "",
-        endDate: "",
+        startDate: "2021/11/30 05:00:00",
+        endDate: "2021/11/30 15:00:00",
         minAmountBusd: "1000",
         maxAmountBusd: "10000",
         price: "0.04",
