@@ -17,8 +17,8 @@ To deploy a new POOL, clone a folder inside `scripts/POOLS/` folder, eg to `scri
         contractType: "LaunchVerseWhitelist",
         deploy: {
             title: "ABC Test Pool",
-            startDate: "",
-            endDate: "",
+            startDate: "2021/11/30 05:00:00 GMT+00:00",
+            endDate: "2021/11/30 15:00:00 GMT+00:00",
             minAmountBusd: "1000",
             maxAmountBusd: "10000",
             price: "0.04",
