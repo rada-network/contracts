@@ -37,7 +37,6 @@ export async function upgradeContract(poolpath: string) {
     const network = hardhatArguments.network;
 
     const proxyAddress = upgrade.address[network || 'testnet'];
-return proxyAddress;    
     const contractFactory = await ethers.getContractFactory(contractType);
     const token = await upgrades.upgradeProxy(proxyAddress, contractFactory);
     return token.address;
