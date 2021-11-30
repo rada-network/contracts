@@ -14,6 +14,7 @@ async function main() {
 
     // Token project
     const tokenAddress = "0xbaDB6b73c2FBE647a256Cf8F965f89573A054113";
+    //console.log('Token Project: ', tokenAddress);
 
     // Token RIR
 
@@ -21,7 +22,7 @@ async function main() {
     console.log('RIR Contract: ', rirAddress);
 
 
-    const launchPadFactory = await ethers.getContractFactory("LaunchVerse");
+    const launchPadFactory = await ethers.getContractFactory("LaunchVerseWhitelist");
 
     const startDate = Math.floor((Date.now() + 0 * 60 * 60 * 1000) / 1000);
     const endDate = Math.floor((Date.now() + 7 * 24 * 60 * 60 * 1000) / 1000);
@@ -29,16 +30,15 @@ async function main() {
         _bUSDAddress: busdAddress,
         _rirAddress: rirAddress,
         _tokenPrice: utils.parseEther("1"),
-        _bUSDForSale: utils.parseEther("1000"),
+        _bUSDForSale: utils.parseEther("1500"),
         _startDate: startDate,
         _endDate: endDate,
         _individualMinimumAmountBusd: utils.parseEther("100"),
-        _individualMaximumAmountBusd: utils.parseEther("400"),
+        _individualMaximumAmountBusd: utils.parseEther("800"),
         _feeTax: 0,
     };
 
     let launchPadContract = await upgrades.deployProxy(launchPadFactory, [
-        // paramLaunchpad._tokenAddress,
         paramLaunchpad._bUSDAddress,
         paramLaunchpad._rirAddress,
         paramLaunchpad._tokenPrice,
@@ -55,7 +55,8 @@ async function main() {
     const launchPadAddress = launchPadContract.address;
 
     console.log('LaunchPad Contract: ', launchPadAddress);
-       
+   
+    // Send token to launchPad
     //await token.mint(launchPadAddress, utils.parseEther("1000000"));
 }
 
