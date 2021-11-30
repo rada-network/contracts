@@ -10,3 +10,4 @@ artifacts
 #Hardhat files
 /.idea/
 /.env
+.deploy.json
