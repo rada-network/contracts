@@ -76,6 +76,33 @@ task("view", "Read data from contract")
         updateDeployedData(deployedData);
     });
 
+/* Read data from contract */
+task("exec", "Call a task in contract")
+    .addParam("pool", "Pool Name")
+    .addParam("func", "Function to call")
+    .addParam("p1", "Param 1")
+    .setAction(async (taskArgs, hre) => {
+        // check if task exist, then quit
+        const deployedData = getDeployedData()
+        if (deployedData[network][taskArgs.pool] == null) {
+            console.log("Cannot Find contract for this pool");
+            return;
+        }
+
+        const contractAddress = deployedData[network][taskArgs.pool];        
+        const {ethers, upgrades} = hre;
+        const deployData = require(`./pools/${taskArgs.pool}.json`)
+
+        const contract = await ethers.getContractAt(deployData.contractType, contractAddress);
+
+        if (taskArgs.func) {
+            console.log(`Get data from contract`)
+            console.log (await contract[taskArgs.func](taskArgs.p1))
+        }
+
+        updateDeployedData(deployedData);
+    });
+
 
 
 task("deploy", "Deploy a POOL")

@@ -86,7 +86,10 @@ contract LaunchVerse is
     bool public isWithdrawBusd;
     bool public isWithdrawAddressSet;
 
-
+    /* Limit RIR for individual */
+    uint256 public individualMinimumAmountRIR; /* Minimum RIR Amount Per Address, default is 0 */
+    uint256 public individualMaximumAmountRIR; /* Maximum RIR Amount Per Address, default and not over individualMaximumAmountBusd/rate */
+    
 
     function initialize(
         /* address _tokenAddress, */ // Will setup later, not available at the Pool start
@@ -141,6 +144,10 @@ contract LaunchVerse is
 
         individualMinimumAmountBusd = _individualMinimumAmountBusd;
         individualMaximumAmountBusd = _individualMaximumAmountBusd;
+
+        // for RIR limit
+        individualMinimumAmountRIR = 0;
+        individualMaximumAmountRIR = individualMaximumAmountBusd.div(rate);
 
         // tokenAddress = ERC20(_tokenAddress); // 
         bUSDAddress = ERC20(_bUSDAddress);
@@ -655,4 +662,48 @@ contract LaunchVerse is
         totalRIRAllocation = bUSDForSale.div(rate).mul(percentage).div(100);
     }
 
+
+    /**
+     * Allow update POOL Info time, be careful
+     */
+    /* Extend closing time */
+    function extendTime (uint256 _endDate) external onlyOwner {
+        require(block.timestamp <= _endDate && endDate <= _endDate, "New End-Time need greater than old End-Time");
+        endDate = _endDate;
+    }
+    
+    /* Update Limitation */
+    function updateLimitation (
+        uint256 _individualMinimumAmountBusd,
+        uint256 _individualMaximumAmountBusd,
+        uint256 _individualMinimumAmountRIR,
+        uint256 _individualMaximumAmountRIR
+    ) external onlyOwner {
+        require(
+            _individualMinimumAmountBusd > 0,
+            "Individual Minimum Amount Busd should be > 0"
+        );
+        require(
+            _individualMaximumAmountBusd >= _individualMinimumAmountBusd,
+            "Individual Maximim Amount BUSD should be > Individual Minimum Amount BUSD"
+        );
+        require(
+            _individualMinimumAmountRIR >= 0,
+            "Individual Minimum Amount RIR cannot be negative"
+        );
+        require(
+            _individualMaximumAmountRIR >= _individualMinimumAmountRIR,
+            "Individual Maximim Amount RIR should be > Individual Minimum Amount RIR"
+        );
+        require(
+            _individualMaximumAmountRIR.mul(rate) <= _individualMaximumAmountBusd,
+            "Individual Maximim Amount RIR should be should not be over Maximum Amount BUSD"
+        );
+        
+        // update
+        individualMinimumAmountBusd = _individualMinimumAmountBusd;
+        individualMaximumAmountBusd = _individualMaximumAmountBusd;
+        individualMinimumAmountRIR = _individualMinimumAmountRIR;
+        individualMaximumAmountRIR = _individualMaximumAmountRIR;
+    }
 }

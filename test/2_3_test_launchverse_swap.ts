@@ -474,6 +474,36 @@ describe("LaunchVerse", async function () {
                     expect(buyerWhitelists.length).to.equal(0);
                     await expect(launchPadContract.connect(owner).setEmptyWins()).to.reverted;
                 })
+
+                it('Update POOL', async function () {
+                    // need owner
+                    await launchPadContract.connect(owner);
+
+                    // update close time
+                    // new end time
+                    const endDate = Math.floor((Date.now() + 10 * 24 * 60 * 60 * 1000) / 1000);
+                    await launchPadContract.extendTime(endDate)
+                    expect(await launchPadContract.endDate()).to.equal(endDate);
+
+                    // update limitation
+                    const _individualMinimumAmountBusd = utils.parseEther("100");
+                    const _individualMaximumAmountBusd = utils.parseEther("1000");
+                    const _individualMinimumAmountRIR = utils.parseEther("1");
+                    const _individualMaximumAmountRIR = utils.parseEther("4");
+                    await launchPadContract.updateLimitation(
+                        _individualMinimumAmountBusd,
+                        _individualMaximumAmountBusd,
+                        _individualMinimumAmountRIR,
+                        _individualMaximumAmountRIR
+                    );
+
+                    expect(await launchPadContract.individualMinimumAmountBusd()).to.equal(_individualMinimumAmountBusd);
+                    expect(await launchPadContract.individualMaximumAmountBusd()).to.equal(_individualMaximumAmountBusd);
+                    expect(await launchPadContract.individualMinimumAmountRIR()).to.equal(_individualMinimumAmountRIR);
+                    expect(await launchPadContract.individualMaximumAmountRIR()).to.equal(_individualMaximumAmountRIR);
+                });
+
+
             });
 
 
