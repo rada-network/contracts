@@ -159,7 +159,7 @@ describe("LaunchVerse With 10% Token Fee", async function () {
             expect(utils.formatEther(addr1_tokenAmount)).to.equal("0.0");
 
             // push more RIR than require (RIR * 100 > BUSD)
-            await expect(launchPadContract.connect(addr1).createSubscription(utils.parseEther("200"), utils.parseEther("5"), addr4.address)).to.revertedWith('Amount is not valid');
+            await expect(launchPadContract.connect(addr1).createSubscription(utils.parseEther("200"), utils.parseEther("5"), addr4.address)).to.revertedWith('Amount RIR over limit');
             console.log('create sub 3');
             await launchPadContract.connect(addr1).createSubscription(utils.parseEther("300"), utils.parseEther("0"), addr3.address);
 

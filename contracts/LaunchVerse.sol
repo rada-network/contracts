@@ -357,18 +357,28 @@ contract LaunchVerse is
                 "You dont have enough RIR Token"
             );
 
-            // check if over RIR allocation fill
+            // check if over RIR allocation fill - check later
             require(
                 totalSubRIR + _amountRIR <= totalRIRAllocation,
                 "Eceeds Total RIR Allocation"
             );
 
+            // check min/max RIR
+            uint256 _totalAmountRIR = subscription[msg.sender].amountRIR.add(_amountRIR);
+            require(
+                _totalAmountRIR >= individualMinimumAmountRIR,
+                "Amount RIR under required"
+            );
+            require(
+                _totalAmountRIR <= individualMaximumAmountRIR,
+                "Amount RIR over limit"
+            );
+
             // Prevent misunderstanding: only RIR is enough
             // (_amountRIR + subscription[msg.sender].amountRIR).mul(rate) <= need include prefunded RIR
             require(
-                subscription[msg.sender].amountRIR.add(_amountRIR).mul(rate) <=
-                    subscription[msg.sender].amountBUSD + _amountBusd,
-                "Amount is not valid"
+                _totalAmountRIR.mul(rate) <= subscription[msg.sender].amountBUSD + _amountBusd,
+                "Amount RIR is not valid"
             );
 
             require(
