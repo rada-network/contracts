@@ -11,6 +11,8 @@ contract LaunchVerseWhitelist is LaunchVerse {
     mapping (address => bool) public whitelist;
     address[] whitelistAddresses;
 
+    mapping (address => uint256) public allocations;
+
 
     // Getter
     function inWhitelist(address _address) public view returns (bool) {
@@ -56,6 +58,14 @@ contract LaunchVerseWhitelist is LaunchVerse {
     }
 
 
+    function importAllocations(address[] memory _addresses, uint256[] memory _allocations) external virtual onlyAdmin {
+        require(_addresses.length == _allocations.length, "length not match");
+        for (uint256 i = 0; i < _addresses.length; i++) {
+            allocations[_addresses[i]] = _allocations[i];
+        }
+    }
+
+
     function createSubscription(
         uint256 _amountBusd,
         uint256 _amountRIR,
@@ -66,6 +76,35 @@ contract LaunchVerseWhitelist is LaunchVerse {
 
         // call parent
         super.createSubscription(_amountBusd, _amountRIR, _referer);
+    }
+
+
+    /**
+     Pick Winner List base on the allocations and subscriptions
+     */
+    function pickWinners() external virtual onlyAdmin winEmpty {
+        uint256 _bUSDLeft = bUSDForSale;
+        uint256 _bUSDAllocated = 0;
+        for (uint256 i=0; i< subscribers.length && _bUSDLeft > 0; i++) {
+            address _address = subscribers[i];
+            Order memory _order = subscription[_address];
+            // max approved allocation
+            uint256 _allocation = allocations[_address];
+            // check with input
+            if (_allocation > _order.amountBUSD) _allocation = _order.amountBUSD;
+            // check if over total
+            if (_allocation > _bUSDLeft) _allocation = _bUSDLeft;
+            if (_allocation > 0) {
+                // approve this allocation for this address
+                subscription[_address].approvedBUSD = _allocation;
+                winners.push(_address);
+                // 
+                _bUSDAllocated += _allocation;
+                _bUSDLeft -= _allocation;
+            }
+        }
+
+        bUSDAllocated = _bUSDAllocated;
     }
 
 }
