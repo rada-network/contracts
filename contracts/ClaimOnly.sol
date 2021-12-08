@@ -71,14 +71,14 @@ contract ClaimOnly is
 
     POOL[] public pools;
 
-    struct Invester {
+    struct Investor {
         uint256 amount; // approved amount in $
         uint256 claimed; // amount of Token claimed
-        bool approved; // state to make sure this invester is approved
+        bool approved; // state to make sure this investor is approved
     }
 
-    mapping(uint256 => mapping(address => Invester)) private investers;
-    mapping(uint256 => address[]) private investersAddress;
+    mapping(uint256 => mapping(address => Investor)) private investors;
+    mapping(uint256 => address[]) private investorsAddress;
 
     /**
         Modifiers
@@ -92,11 +92,11 @@ contract ClaimOnly is
     }
 
     function poolAddresses(uint _poolIdx) external view returns (address[] memory) {
-        return investersAddress[_poolIdx];
+        return investorsAddress[_poolIdx];
     }
 
-    function getInvester (uint _poolIdx, address _address) external view returns (Invester memory) {
-        return investers[_poolIdx][_address];
+    function getInvestor (uint _poolIdx, address _address) external view returns (Investor memory) {
+        return investors[_poolIdx][_address];
     }
 
     /**
@@ -144,22 +144,22 @@ contract ClaimOnly is
         pools[_poolIdx].locked = true;
     }
 
-    // to unlock, all investers need unapproved
+    // to unlock, all investors need unapproved
     function unlockPool(uint256 _poolIdx) public virtual onlyApprover {
         require(_poolIdx < pools.length, "Pool not available");
         require(pools[_poolIdx].locked, "Pool not locked");
-        // make sure no approve invester
-        for (uint256 i; i < investersAddress[_poolIdx].length; i++) {
-            address _address = investersAddress[_poolIdx][i];
-            Invester memory invester = investers[_poolIdx][_address];
-            require(!invester.approved, "Invester approved");
+        // make sure no approve investor
+        for (uint256 i; i < investorsAddress[_poolIdx].length; i++) {
+            address _address = investorsAddress[_poolIdx][i];
+            Investor memory investor = investors[_poolIdx][_address];
+            require(!investor.approved, "Investor approved");
         }
         // Lock pool
         pools[_poolIdx].locked = false;
     }
 
-    // Add / Import Invester
-    function importInvester(
+    // Add / Import Investor
+    function importInvestor(
         uint256 _poolIdx,
         address[] memory _addresses,
         uint256[] memory _amounts
@@ -170,10 +170,10 @@ contract ClaimOnly is
         POOL memory pool = pools[_poolIdx]; // pool info
 
         for (uint256 i; i < _addresses.length; i++) {
-            Invester memory invester = investers[_poolIdx][_addresses[i]];
-            require(!invester.approved, "User is already approved");
+            Investor memory investor = investors[_poolIdx][_addresses[i]];
+            require(!investor.approved, "User is already approved");
             require(
-                invester.claimed.mul(pool.price) <= _amounts[i],
+                investor.claimed.mul(pool.price) <= _amounts[i],
                 "Invalid Amount"
             );
         }
@@ -182,17 +182,17 @@ contract ClaimOnly is
         for (uint256 i; i < _addresses.length; i++) {
             address _address = _addresses[i];
             // check and put to address list: amount is 0 <= new address
-            if (investers[_poolIdx][_address].amount == 0) {
-                investersAddress[_poolIdx].push(_address);
+            if (investors[_poolIdx][_address].amount == 0) {
+                investorsAddress[_poolIdx].push(_address);
             }
             uint256 _amount = _amounts[i];
             if (_amount == 0) _amount = 1; // using a tiny value, will not valid to claim
-            investers[_poolIdx][_address].amount = _amount;
+            investors[_poolIdx][_address].amount = _amount;
         }
     }
 
-    // Approve Invester
-    function approveInvester(uint256 _poolIdx) internal virtual onlyApprover {
+    // Approve Investor
+    function approveInvestors(uint256 _poolIdx) external virtual onlyApprover {
         require(_poolIdx < pools.length, "Pool not available");
 
         POOL memory pool = pools[_poolIdx]; // pool info
@@ -202,27 +202,36 @@ contract ClaimOnly is
 
         // check for approved amount
         uint256 _totalAmounts;
-        for (uint256 i; i < investersAddress[_poolIdx].length; i++) {
-            address _address = investersAddress[_poolIdx][i];
-            Invester memory invester = investers[_poolIdx][_address];
+        for (uint256 i; i < investorsAddress[_poolIdx].length; i++) {
+            address _address = investorsAddress[_poolIdx][i];
+            Investor memory investor = investors[_poolIdx][_address];
 
             // make sure the claim less amount
             require(
-                invester.claimed.mul(pool.price) <= invester.amount,
+                investor.claimed.mul(pool.price) <= investor.amount,
                 "Invalid Amount"
             );
 
-            if (invester.amount > 1) {
-                _totalAmounts += invester.amount;
+            if (investor.amount > 1) {
+                _totalAmounts += investor.amount;
             }
         }
         require(_totalAmounts <= pool.amount, "Eceeds total amount");
 
         // approve
-        for (uint256 i; i < investersAddress[_poolIdx].length; i++) {
-            address _address = investersAddress[_poolIdx][i];
-            investers[_poolIdx][_address].approved = true;
+        for (uint256 i; i < investorsAddress[_poolIdx].length; i++) {
+            address _address = investorsAddress[_poolIdx][i];
+            investors[_poolIdx][_address].approved = true;
         }
+    }
+
+    // unapprove investor
+    function unapproveInvestor(uint256 _poolIdx, address _address) external virtual onlyApprover {
+        require(_poolIdx < pools.length, "Pool not available");
+        // require Investor approved
+        Investor memory investor = investors[_poolIdx][_address];
+        require(investor.approved, "Investor not approved");
+        investors[_poolIdx][_address].approved = false;
     }
 
     // Deposit into pool - by Admin
@@ -256,9 +265,9 @@ contract ClaimOnly is
     // Claimed
     function getClaimable(uint256 _poolIdx) public view returns (uint256) {
         address _address = msg.sender;
-        Invester memory invester = investers[_poolIdx][_address];
+        Investor memory investor = investors[_poolIdx][_address];
         
-        if (!invester.approved) return 0;
+        if (!investor.approved) return 0;
         
         if (_poolIdx < pools.length) return 0;
         POOL memory pool = pools[_poolIdx]; // pool info
@@ -266,10 +275,10 @@ contract ClaimOnly is
 
         uint256 _deposited = pool.deposited;
 
-        uint256 _tokenClaimable = invester.amount.mul(_deposited).div(
+        uint256 _tokenClaimable = investor.amount.mul(_deposited).div(
             pool.amount
         );
-        return _tokenClaimable.sub(invester.claimed);
+        return _tokenClaimable.sub(investor.claimed);
     }
 
     function claim(uint256 _poolIdx) public payable virtual isClaimable {
@@ -294,6 +303,6 @@ contract ClaimOnly is
             "ERC20 transfer failed - claim token"
         );
         // update claimed token
-        investers[_poolIdx][msg.sender].claimed += _claimable;
+        investors[_poolIdx][msg.sender].claimed += _claimable;
     }
 }
