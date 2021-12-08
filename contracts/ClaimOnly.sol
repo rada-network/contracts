@@ -16,6 +16,19 @@ contract ClaimOnly is
 {
     using SafeMathUpgradeable for uint256;
 
+    event DepositedEvent(
+        uint poolIndex,
+        uint256 amountToken,
+        uint256 timestamp
+    );
+
+    event ClaimEvent(
+        uint poolIndex,
+        uint256 amountToken,
+        address indexed buyer,
+        uint256 timestamp
+    );
+
     /* Admins List, state for user */
     mapping(address => bool) public admins;
     mapping(address => bool) public approvers;
@@ -262,7 +275,7 @@ contract ClaimOnly is
         // update total deposited token
         pools[_poolIdx].depositedToken += _amountToken;
 
-        // emit DepositedEvent(_amount, block.timestamp);
+        emit DepositedEvent(_poolIdx, _amountToken, block.timestamp);
     }
 
     // Claimed
@@ -307,5 +320,7 @@ contract ClaimOnly is
         );
         // update claimed token
         investors[_poolIdx][msg.sender].claimedToken += _claimable;
+
+        emit ClaimEvent(_poolIdx, _claimable, msg.sender, block.timestamp);
     }
 }
