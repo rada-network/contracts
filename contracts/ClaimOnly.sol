@@ -63,17 +63,20 @@ contract ClaimOnly is
      */
     struct POOL {
         ERC20 token;
-        uint256 amount; // total amount in $
+        uint256 allocationBusd; // total allocation in $
         uint256 price;
-        uint256 deposited;
+        uint256 depositedToken; // total deposited in Token
+        uint256 startDate;
+        uint256 endDate;
+
         bool locked; // if locked, cannot change pool info
     }
 
     POOL[] public pools;
 
     struct Investor {
-        uint256 amount; // approved amount in $
-        uint256 claimed; // amount of Token claimed
+        uint256 allocationBusd; // approved amount in $
+        uint256 claimedToken; // amount of Token claimed
         bool approved; // state to make sure this investor is approved
     }
 
@@ -106,24 +109,24 @@ contract ClaimOnly is
     // Add/update/delete Pool - by Admin
     function addPool(
         address _tokenAddress,
-        uint256 _amount,
+        uint256 _allocationBusd,
         uint256 _price
     ) public virtual onlyAdmin {
-        require(_amount > 0, "Invalid Amount");
+        require(_allocationBusd > 0, "Invalid allocationBusd");
         require(_price > 0, "Invalid Price");
 
         POOL memory pool;
         pool.token = ERC20(_tokenAddress);
-        pool.amount = _amount;
+        pool.allocationBusd = _allocationBusd;
         pool.price = _price;
     }
 
     function updatePool(
         uint256 _poolIdx,
-        uint256 _amount,
+        uint256 _allocationBusd,
         uint256 _price
     ) public virtual onlyAdmin {
-        require(_amount > 0, "Invalid Amount");
+        require(_allocationBusd > 0, "Invalid allocationBusd");
         require(_price > 0, "Invalid Price");
         require(_poolIdx < pools.length, "Pool not available");
 
@@ -132,7 +135,7 @@ contract ClaimOnly is
         require(!pool.locked, "Pool locked");
 
         // do update
-        pools[_poolIdx].amount = _amount;
+        pools[_poolIdx].allocationBusd = _allocationBusd;
         pools[_poolIdx].price = _price;
     }
 
@@ -173,7 +176,7 @@ contract ClaimOnly is
             Investor memory investor = investors[_poolIdx][_addresses[i]];
             require(!investor.approved, "User is already approved");
             require(
-                investor.claimed.mul(pool.price) <= _amounts[i],
+                investor.claimedToken.mul(pool.price) <= _amounts[i],
                 "Invalid Amount"
             );
         }
@@ -182,12 +185,12 @@ contract ClaimOnly is
         for (uint256 i; i < _addresses.length; i++) {
             address _address = _addresses[i];
             // check and put to address list: amount is 0 <= new address
-            if (investors[_poolIdx][_address].amount == 0) {
+            if (investors[_poolIdx][_address].allocationBusd == 0) {
                 investorsAddress[_poolIdx].push(_address);
             }
             uint256 _amount = _amounts[i];
             if (_amount == 0) _amount = 1; // using a tiny value, will not valid to claim
-            investors[_poolIdx][_address].amount = _amount;
+            investors[_poolIdx][_address].allocationBusd = _amount;
         }
     }
 
@@ -208,15 +211,15 @@ contract ClaimOnly is
 
             // make sure the claim less amount
             require(
-                investor.claimed.mul(pool.price) <= investor.amount,
+                investor.claimedToken.mul(pool.price) <= investor.allocationBusd,
                 "Invalid Amount"
             );
 
-            if (investor.amount > 1) {
-                _totalAmounts += investor.amount;
+            if (investor.allocationBusd > 1) {
+                _totalAmounts += investor.allocationBusd;
             }
         }
-        require(_totalAmounts <= pool.amount, "Eceeds total amount");
+        require(_totalAmounts <= pool.allocationBusd, "Eceeds total amount");
 
         // approve
         for (uint256 i; i < investorsAddress[_poolIdx].length; i++) {
@@ -235,29 +238,29 @@ contract ClaimOnly is
     }
 
     // Deposit into pool - by Admin
-    function deposit(uint256 _poolIdx, uint256 _amount)
+    function deposit(uint256 _poolIdx, uint256 _amountToken)
         external
         payable
         onlyAdmin
     {
-        require(_amount > 0, "Invalid Amount");
+        require(_amountToken > 0, "Invalid Amount");
         require(_poolIdx < pools.length, "Pool not available");
         POOL memory pool = pools[_poolIdx]; // pool info
         require(pool.locked, "Pool not locked");
         // not allow deposit more than need
         require(
-            pool.deposited.add(_amount).mul(pool.price) <= pool.amount,
+            pool.depositedToken.add(_amountToken).mul(pool.price) <= pool.allocationBusd,
             "Eceeds Pool Amount"
         );
 
         // transfer
         require(
-            pool.token.transferFrom(msg.sender, address(this), _amount),
+            pool.token.transferFrom(msg.sender, address(this), _amountToken),
             "Transfer failed"
         );
 
         // update total deposited token
-        pools[_poolIdx].deposited += _amount;
+        pools[_poolIdx].depositedToken += _amountToken;
 
         // emit DepositedEvent(_amount, block.timestamp);
     }
@@ -273,12 +276,12 @@ contract ClaimOnly is
         POOL memory pool = pools[_poolIdx]; // pool info
         if (!pool.locked) return 0;
 
-        uint256 _deposited = pool.deposited;
+        uint256 _deposited = pool.depositedToken;
 
-        uint256 _tokenClaimable = investor.amount.mul(_deposited).div(
-            pool.amount
+        uint256 _tokenClaimable = investor.allocationBusd.mul(_deposited).div(
+            pool.allocationBusd
         );
-        return _tokenClaimable.sub(investor.claimed);
+        return _tokenClaimable.sub(investor.claimedToken);
     }
 
     function claim(uint256 _poolIdx) public payable virtual isClaimable {
@@ -290,7 +293,7 @@ contract ClaimOnly is
         // make sure not out of max
         // require(
         //     getTotalTokenForWinner(msg.sender) >=
-        //         subscription[msg.sender].claimedToken + claimable[1],
+        //         subscription[msg.sender].claimedTokenToken + claimable[1],
         //     "Cannot claim more token than approved"
         // );
         // available claim busd
@@ -303,6 +306,6 @@ contract ClaimOnly is
             "ERC20 transfer failed - claim token"
         );
         // update claimed token
-        investors[_poolIdx][msg.sender].claimed += _claimable;
+        investors[_poolIdx][msg.sender].claimedToken += _claimable;
     }
 }
