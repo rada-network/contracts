@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
+
 contract WhitelistPools is
     Initializable,
     ContextUpgradeable,
@@ -15,6 +16,11 @@ contract WhitelistPools is
     OwnableUpgradeable
 {
     using SafeMathUpgradeable for uint256;
+
+    event PoolCreated (
+        uint64 poolIndex,
+        uint256 timestamp
+    );
 
     event PaymentEvent(
         uint64 poolIndex,
@@ -37,8 +43,8 @@ contract WhitelistPools is
     );
 
 
+    /* address _tokenAddress, */ // Will setup later, not available at the Pool start
     function initialize(
-        /* address _tokenAddress, */ // Will setup later, not available at the Pool start
         address _bUSDAddress
     ) public initializer {
         __Ownable_init();
@@ -55,7 +61,7 @@ contract WhitelistPools is
         DATA Structure
      */
     struct POOL {
-        ERC20 token;
+        address tokenAddress;
         uint256 allocationBusd; // total allocation in $
         uint256 price;
         uint256 depositedToken; // total deposited in Token
@@ -66,6 +72,7 @@ contract WhitelistPools is
 
         bool claimOnly; // for
         bool locked; // if locked, cannot change pool info
+        string title; // readable code
     }
 
     POOL[] public pools;
@@ -84,11 +91,10 @@ contract WhitelistPools is
         uint256 poolEndDate;
         address tokenAddress;
         uint64 poolIndex;
-        uint64 approvalCount;
-        mapping (address => bool) approvers;
+        address[] approvers;
     }
 
-    ChangeData private requestChangeData;
+    ChangeData public requestChangeData;
 
 
     ERC20 busdToken;
@@ -161,18 +167,24 @@ contract WhitelistPools is
     //// FOR CASHOUT ADDRESS
     /* Reject change */
     function rejectRequestChange() external virtual onlyModerator {
+        // delete requestChangeData;
         delete requestChangeData;
     }
 
     function approveRequestChange() external virtual onlyApprover {
         // make sure not duplicate approve
-        require(!requestChangeData.approvers[msg.sender], "Approve already");
-        require(requestChangeData.WITHDRAW_ADDRESS != address(0) || requestChangeData.poolAllocationBusd > 0 || requestChangeData.poolEndDate > 0, "No Data");
+        for(uint16 i; i<requestChangeData.approvers.length; i++) {
+            require(requestChangeData.approvers[i] != msg.sender, "Approve already");
+        }
+        require(requestChangeData.WITHDRAW_ADDRESS != address(0) 
+            || requestChangeData.tokenAddress != address(0) 
+            || requestChangeData.poolAllocationBusd > 0 
+            || requestChangeData.poolEndDate > 0,
+            "No Data");
         // make approved
-        requestChangeData.approvalCount++;
-        requestChangeData.approvers[msg.sender] = true;
+        requestChangeData.approvers.push(msg.sender);
 
-        if (requestChangeData.approvalCount >= approverCount) {
+        if (requestChangeData.approvers.length >= approverCount) {
             // update change data
             if (requestChangeData.WITHDRAW_ADDRESS != address(0)) {
                 WITHDRAW_ADDRESS = requestChangeData.WITHDRAW_ADDRESS;
@@ -199,7 +211,7 @@ contract WhitelistPools is
             }
 
             if (requestChangeData.tokenAddress != address(0)) {
-                pools[requestChangeData.poolIndex].token = ERC20(requestChangeData.tokenAddress);
+                pools[requestChangeData.poolIndex].tokenAddress = requestChangeData.tokenAddress;
             }
             // clear change data
             delete requestChangeData;
@@ -208,6 +220,7 @@ contract WhitelistPools is
 
     function requestChangeWithdrawAddress(address _address) external virtual onlyAdmin {
         require(WITHDRAW_ADDRESS != _address, "Same as current");
+        require(address(0) != _address, "Invalid Address");
         delete requestChangeData;
         requestChangeData.WITHDRAW_ADDRESS = _address;
     }
@@ -216,7 +229,7 @@ contract WhitelistPools is
         require(_poolIdx < pools.length, "Pool not available");
         // pool is not locked, then can update directly
         require(pools[_poolIdx].locked, "Use update pool function please.");
-        require(_allocationBusd > 0 || _endDate > 0, "No Data");
+        require(_allocationBusd > 0 || _endDate > 0 || _tokenAddress != address(0), "No Data");
         delete requestChangeData;
         requestChangeData.poolIndex = _poolIdx;
         if (_allocationBusd > 0) {
@@ -235,8 +248,13 @@ contract WhitelistPools is
     /**
         GETTER
      */ 
-    function poolCount() external view returns (uint) {
-        return pools.length;
+    function poolCount() external view returns (uint64) {
+        return uint64(pools.length);
+    }
+    function getPool(uint64 _poolIdx) external view returns (POOL memory) {
+        POOL memory pool;
+        if (_poolIdx >= pools.length) return pool;
+        return pools[_poolIdx];
     }
 
     function poolAddresses(uint64 _poolIdx) external view returns (address[] memory) {
@@ -247,12 +265,16 @@ contract WhitelistPools is
         return investors[_poolIdx][_address];
     }
 
+    function getWithdrawAddress() external view onlyModerator returns (address) {
+        return WITHDRAW_ADDRESS;
+    }
     /**
         SETTER
      */
 
     // Add/update/delete Pool - by Admin
     function addClaimOnlyPool(
+        string memory _title,
         address _tokenAddress,
         uint256 _allocationBusd,
         uint256 _price
@@ -261,15 +283,19 @@ contract WhitelistPools is
         require(_price > 0, "Invalid Price");
 
         POOL memory pool;
-        pool.token = ERC20(_tokenAddress);
+        pool.tokenAddress = _tokenAddress;
         pool.allocationBusd = _allocationBusd;
         pool.price = _price;
         pool.claimOnly = true;
+        pool.title = _title;
 
         pools.push(pool);
+
+        emit PoolCreated(uint64(pools.length-1), block.timestamp);
     }
 
     function addPayablePool(
+        string memory _title,
         uint256 _allocationBusd,
         uint256 _price,
         uint256 _startDate,
@@ -283,8 +309,11 @@ contract WhitelistPools is
         pool.price = _price;
         pool.startDate = _startDate;
         pool.endDate = _endDate;
+        pool.title = _title;
 
         pools.push(pool);
+
+        emit PoolCreated(uint64(pools.length-1), block.timestamp);
     }
 
     function updatePool(
@@ -333,7 +362,7 @@ contract WhitelistPools is
 
     
     // Add / Import Investor
-    function importInvestor(
+    function importInvestors(
         uint64 _poolIdx,
         address[] memory _addresses,
         uint256[] memory _amountBusds,
@@ -399,7 +428,7 @@ contract WhitelistPools is
                 _totalAmounts += investor.allocationBusd;
             }
         }
-        require(_totalAmounts <= pool.allocationBusd, "Eceeds total amount");
+        require(_totalAmounts <= pool.allocationBusd, "Eceeds total allocation");
 
         // approve
         for (uint256 i; i < investorsAddress[_poolIdx].length; i++) {
@@ -427,15 +456,21 @@ contract WhitelistPools is
         require(_poolIdx < pools.length, "Pool not available");
         POOL memory pool = pools[_poolIdx]; // pool info
         require(pool.locked, "Pool not locked");
+        // require token set
+        require(pool.tokenAddress != address(0), "Token not set");
         // not allow deposit more than need
         require(
-            pool.depositedToken.add(_amountToken).mul(pool.price) <= pool.allocationBusd,
+            pool.depositedToken.add(_amountToken).mul(pool.price).div(1e18) <= pool.allocationBusd,
             "Eceeds Pool Amount"
         );
-
+        ERC20 _token = ERC20(pool.tokenAddress);
+        require(
+            _amountToken <= _token.balanceOf(msg.sender),
+            "Not enough Token"
+        );
         // transfer
         require(
-            pool.token.transferFrom(msg.sender, address(this), _amountToken),
+            _token.transferFrom(msg.sender, address(this), _amountToken),
             "Transfer failed"
         );
 
@@ -450,19 +485,18 @@ contract WhitelistPools is
         address _address = msg.sender;
         Investor memory investor = investors[_poolIdx][_address];
         
-        if (!investor.approved) return 0; // require approved
-        
-        if (_poolIdx < pools.length) return 0;
-        POOL memory pool = pools[_poolIdx]; // pool info
-        if (!pool.locked) return 0;
+        if (!investor.approved) return 0; // require approved        
+        if (_poolIdx >= pools.length) return 0; // pool not available
 
+        POOL memory pool = pools[_poolIdx]; // pool info
+        
+        if (!pool.locked) return 0;
         if (!pool.claimOnly && !investor.paid) return 0; // require paid
 
-        uint256 _deposited = pool.depositedToken;
+        uint256 _tokenClaimable = investor.allocationBusd
+                                    .mul(pool.depositedToken)
+                                    .div(pool.allocationBusd);
 
-        uint256 _tokenClaimable = investor.allocationBusd.mul(_deposited).div(
-            pool.allocationBusd
-        );
         return _tokenClaimable.sub(investor.claimedToken);
     }
 
@@ -473,12 +507,13 @@ contract WhitelistPools is
         POOL memory pool = pools[_poolIdx]; // pool info
 
         // available claim busd
+        ERC20 _token = ERC20(pool.tokenAddress);
         require(
-            pool.token.balanceOf(address(this)) >= _claimable,
+            _token.balanceOf(address(this)) >= _claimable,
             "Not enough token"
         );
         require(
-            pool.token.transfer(msg.sender, _claimable),
+            _token.transfer(msg.sender, _claimable),
             "ERC20 transfer failed - claim token"
         );
         // update claimed token
@@ -497,7 +532,7 @@ contract WhitelistPools is
         address _address = msg.sender;
         Investor memory investor = investors[_poolIdx][_address];
         require(investor.approved, "Not allow to join");
-        require(investor.paid, "Paid already");
+        require(!investor.paid, "Paid already");
         require(investor.amountBusd > 1, "Not allow to join pool");
         
         // check pool
