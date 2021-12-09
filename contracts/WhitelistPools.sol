@@ -234,9 +234,13 @@ contract WhitelistPools is
 
     /**
         GETTER
-     */ 
+     */
     function poolCount() external view returns (uint) {
         return pools.length;
+    }
+
+    function getPools() external view returns (POOL[] memory) {
+        return pools;
     }
 
     function poolAddresses(uint64 _poolIdx) external view returns (address[] memory) {
@@ -331,7 +335,7 @@ contract WhitelistPools is
         pools[_poolIdx].locked = false;
     }
 
-    
+
     // Add / Import Investor
     function importInvestor(
         uint64 _poolIdx,
@@ -449,9 +453,9 @@ contract WhitelistPools is
     function getClaimable(uint64 _poolIdx) public view returns (uint256) {
         address _address = msg.sender;
         Investor memory investor = investors[_poolIdx][_address];
-        
+
         if (!investor.approved) return 0; // require approved
-        
+
         if (_poolIdx < pools.length) return 0;
         POOL memory pool = pools[_poolIdx]; // pool info
         if (!pool.locked) return 0;
@@ -499,7 +503,7 @@ contract WhitelistPools is
         require(investor.approved, "Not allow to join");
         require(investor.paid, "Paid already");
         require(investor.amountBusd > 1, "Not allow to join pool");
-        
+
         // check pool
         require(_poolIdx < pools.length, "Pool not available");
         POOL memory pool = pools[_poolIdx]; // pool info
@@ -525,7 +529,7 @@ contract WhitelistPools is
 
         // update total RIR
         pools[_poolIdx].paidAmount += investor.amountBusd;
-        
+
         emit PaymentEvent(
             _poolIdx,
             investor.amountBusd,
