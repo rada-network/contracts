@@ -256,7 +256,9 @@ contract WhitelistPools is
         if (_poolIdx >= pools.length) return pool;
         return pools[_poolIdx];
     }
-
+    function getPools() external view returns (POOL[] memory) {
+        return pools;
+    }
     function poolAddresses(uint64 _poolIdx) external view returns (address[] memory) {
         return investorsAddress[_poolIdx];
     }
