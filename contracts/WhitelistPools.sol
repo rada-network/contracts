@@ -17,20 +17,20 @@ contract WhitelistPools is
     using SafeMathUpgradeable for uint256;
 
     event PaymentEvent(
-        uint poolIndex,
+        uint64 poolIndex,
         uint256 amountBUSD,
         address indexed buyer,
         uint256 timestamp
     );
 
     event DepositedEvent(
-        uint poolIndex,
+        uint64 poolIndex,
         uint256 amountToken,
         uint256 timestamp
     );
 
     event ClaimEvent(
-        uint poolIndex,
+        uint64 poolIndex,
         uint256 amountToken,
         address indexed buyer,
         uint256 timestamp
@@ -83,8 +83,8 @@ contract WhitelistPools is
         uint256 poolAllocationBusd;
         uint256 poolEndDate;
         address tokenAddress;
-        uint128 poolIndex;
-        uint128 approvalCount;
+        uint64 poolIndex;
+        uint64 approvalCount;
         mapping (address => bool) approvers;
     }
 
@@ -181,7 +181,7 @@ contract WhitelistPools is
             // apply change when enough agreement
             if (requestChangeData.poolAllocationBusd > 0) {
                 // make sure cannot under approved allocation
-                uint _poolIdx = requestChangeData.poolIndex;
+                uint64 _poolIdx = requestChangeData.poolIndex;
                 uint256 _totalApprovedAllocationBusd;
                 for (uint256 i; i < investorsAddress[_poolIdx].length; i++) {
                     address _address = investorsAddress[_poolIdx][i];
@@ -212,7 +212,7 @@ contract WhitelistPools is
         requestChangeData.WITHDRAW_ADDRESS = _address;
     }
 
-    function requestChangePoolData(uint128 _poolIdx, uint256 _allocationBusd, uint256 _endDate, address _tokenAddress) external virtual onlyAdmin {
+    function requestChangePoolData(uint64 _poolIdx, uint256 _allocationBusd, uint256 _endDate, address _tokenAddress) external virtual onlyAdmin {
         require(_poolIdx < pools.length, "Pool not available");
         // pool is not locked, then can update directly
         require(pools[_poolIdx].locked, "Use update pool function please.");
@@ -239,11 +239,11 @@ contract WhitelistPools is
         return pools.length;
     }
 
-    function poolAddresses(uint _poolIdx) external view returns (address[] memory) {
+    function poolAddresses(uint64 _poolIdx) external view returns (address[] memory) {
         return investorsAddress[_poolIdx];
     }
 
-    function getInvestor (uint _poolIdx, address _address) external view returns (Investor memory) {
+    function getInvestor (uint64 _poolIdx, address _address) external view returns (Investor memory) {
         return investors[_poolIdx][_address];
     }
 
@@ -288,7 +288,7 @@ contract WhitelistPools is
     }
 
     function updatePool(
-        uint256 _poolIdx,
+        uint64 _poolIdx,
         uint256 _allocationBusd,
         uint256 _price,
         uint256 _startDate,
@@ -310,7 +310,7 @@ contract WhitelistPools is
     }
 
     // Lock / unlock pool - By Approver
-    function lockPool(uint256 _poolIdx) public virtual onlyApprover {
+    function lockPool(uint64 _poolIdx) public virtual onlyApprover {
         require(_poolIdx < pools.length, "Pool not available");
         require(!pools[_poolIdx].locked, "Pool locked");
         // Lock pool
@@ -318,7 +318,7 @@ contract WhitelistPools is
     }
 
     // to unlock, all investors need unapproved
-    function unlockPool(uint256 _poolIdx) public virtual onlyApprover {
+    function unlockPool(uint64 _poolIdx) public virtual onlyApprover {
         require(_poolIdx < pools.length, "Pool not available");
         require(pools[_poolIdx].locked, "Pool not locked");
         // make sure no approve investor
@@ -334,7 +334,7 @@ contract WhitelistPools is
     
     // Add / Import Investor
     function importInvestor(
-        uint256 _poolIdx,
+        uint64 _poolIdx,
         address[] memory _addresses,
         uint256[] memory _amountBusds,
         uint256[] memory _allocationBusds
@@ -375,7 +375,7 @@ contract WhitelistPools is
     }
 
     // Approve Investor
-    function approveInvestors(uint256 _poolIdx) external virtual onlyApprover {
+    function approveInvestors(uint64 _poolIdx) external virtual onlyApprover {
         require(_poolIdx < pools.length, "Pool not available");
 
         POOL memory pool = pools[_poolIdx]; // pool info
@@ -409,7 +409,7 @@ contract WhitelistPools is
     }
 
     // unapprove investor
-    function unapproveInvestor(uint256 _poolIdx, address _address) external virtual onlyApprover {
+    function unapproveInvestor(uint64 _poolIdx, address _address) external virtual onlyApprover {
         require(_poolIdx < pools.length, "Pool not available");
         // require Investor approved
         Investor memory investor = investors[_poolIdx][_address];
@@ -418,7 +418,7 @@ contract WhitelistPools is
     }
 
     // Deposit into pool - by Admin
-    function deposit(uint256 _poolIdx, uint256 _amountToken)
+    function deposit(uint64 _poolIdx, uint256 _amountToken)
         external
         payable
         onlyAdmin
@@ -446,7 +446,7 @@ contract WhitelistPools is
     }
 
     // Claimed
-    function getClaimable(uint256 _poolIdx) public view returns (uint256) {
+    function getClaimable(uint64 _poolIdx) public view returns (uint256) {
         address _address = msg.sender;
         Investor memory investor = investors[_poolIdx][_address];
         
@@ -466,7 +466,7 @@ contract WhitelistPools is
         return _tokenClaimable.sub(investor.claimedToken);
     }
 
-    function claim(uint256 _poolIdx) public payable virtual isClaimable {
+    function claim(uint64 _poolIdx) public payable virtual isClaimable {
         uint256 _claimable = getClaimable(_poolIdx);
         require(_claimable > 0, "Nothing to claim");
 
@@ -492,7 +492,7 @@ contract WhitelistPools is
 
     /* Make a payment */
     function makePayment(
-        uint _poolIdx
+        uint64 _poolIdx
     ) public payable virtual {
         address _address = msg.sender;
         Investor memory investor = investors[_poolIdx][_address];
