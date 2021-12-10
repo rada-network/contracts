@@ -198,6 +198,10 @@ contract PoolRIR is
         // not over RIR count
         require (rirInvestorCounts[_poolIdx] < pool.allocationRir || _amountRir ==  0 || investor.amountRir > 0, "Eceeds RIR allocation");
 
+        require(_amountBusd == 0 || investor.amountBusd + _amountBusd >= pool.minAllocationBusd, "Eceeds Minimum Busd");
+        require(_amountBusd == 0 || investor.amountBusd + _amountBusd <= pool.maxAllocationBusd, "Eceeds Maximum Busd");
+
+
         require(
             busdToken.balanceOf(msg.sender) >= _amountBusd,
             "Not enough BUSD"

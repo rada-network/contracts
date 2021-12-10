@@ -130,6 +130,25 @@ describe("Whitelist", async function () {
             expect(utils.formatEther(pool.allocationBusd)).to.equal("900.0");
             expect(utils.formatEther(pool.price)).to.equal("1.0");
             expect(pool.claimOnly).to.equal(false);
+
+
+            await test_mint(bUSDContract, addr2, "1000");
+            await test_mint(rirContract, addr2, "10");
+            await expect(testContract.connect(addr1).makePayment(1, utils.parseEther("100"), 0)).to.revertedWith("Pool not active");
+
+            // lock pool
+            await expect(testContract.connect(addr1).lockPool(1)).to.revertedWith("Caller is not an approver");
+            await testContract.connect(addr2).lockPool(1);
+            expect((await testContract.getPool(1)).locked).to.equal(true);
+
+
+            await expect(testContract.connect(addr1).makePayment(1, utils.parseEther("1000"), 0)).to.revertedWith("Eceeds Maximum Busd");
+            await expect(testContract.connect(addr1).makePayment(1, utils.parseEther("50"), 0)).to.revertedWith("Eceeds Minimum Busd");
+            await testContract.connect(addr2).makePayment(1, utils.parseEther("100"), 0);
+            await testContract.connect(addr2).makePayment(1, utils.parseEther("0"), 1);
+            await testContract.connect(addr2).makePayment(1, utils.parseEther("100"), 1);
+            await test_balance(bUSDContract, addr2, "800.0"); 
+
 return;
 
             // Total allocation: 900
