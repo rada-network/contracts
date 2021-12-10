@@ -9,10 +9,11 @@ import { utils } from "ethers";
 
 async function main() {
 
-    const contractFactory = await ethers.getContractFactory("WhitelistPools");
+    const contractFactory = await ethers.getContractFactory("PoolWhitelist");
 
     let contract = await upgrades.deployProxy(contractFactory, [
-            process.env.BUSD_ADDRESS
+            process.env.BUSD_ADDRESS,
+            process.env.RIR_ADDRESS
         ],
         { unsafeAllowCustomTypes: true }
     );
