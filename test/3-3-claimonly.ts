@@ -8,8 +8,8 @@ import exp from "constants";
 
 use(solidity);
 
-describe("Whitelist", async function () {
-
+describe("Claimonly", async function () {
+    
     let testContract: Contract;
     let tokenContract: Contract;
     let bUSDContract: Contract;
@@ -57,7 +57,7 @@ describe("Whitelist", async function () {
         const startDate = Math.floor((Date.now() - 24 * 60 * 60 * 1000) / 1000);
         const endDate = Math.floor((Date.now() + 7 * 24 * 60 * 60 * 1000) / 1000);
 
-        const launchPadFactory = await ethers.getContractFactory("PoolWhitelist");
+        const launchPadFactory = await ethers.getContractFactory("PoolClaim");
 
         testContract = await upgrades.deployProxy(launchPadFactory, [
             busdAddress,
@@ -87,37 +87,40 @@ describe("Whitelist", async function () {
         expect(utils.formatEther(_balance)).to.equal(_amount);
     }
 
-    
-    
-    describe("Whitelist Pool", async function () {
+
+    describe("ClaimOnly Pool", async function () {
+        it ("Check admin & approver", async () => {
+            expect (await testContract.admins(addr1.address)).to.equal(true);
+            expect (await testContract.admins(addr2.address)).to.equal(false);
+            expect (await testContract.approvers(addr1.address)).to.equal(false);
+            expect (await testContract.approvers(addr2.address)).to.equal(true);
+        })
+
         it ("Add a Pool", async () => {
             // create new pool
             console.log("Add Pool");
             await testContract.addPool(
                 "tk1",
-                utils.parseEther("900"),
-                utils.parseEther("1"),
-                Math.floor(Date.now() / 1000),
-                Math.floor(Date.now() / 1000)
+                tokenAddress,
+                utils.parseEther("1000"),
+                utils.parseEther("1")
             );
             await testContract.addPool(
-                "elemon-whitelist",
+                "elemon",
+                tokenAddress,
                 utils.parseEther("900"),
-                utils.parseEther("1"),
-                Math.floor(Date.now() / 1000),  // start date
-                Math.floor((Date.now() + 7 * 24 * 60 * 60 * 1000) / 1000)   //end date
+                utils.parseEther("1")
             );
-    
+
             expect (await testContract.poolCount()).to.equal(2);
             let pool = await testContract.getPool(1);
-            expect(pool.title).to.equal("elemon-whitelist");
+            expect(pool.title).to.equal("elemon");
             expect(utils.formatEther(pool.allocationBusd)).to.equal("900.0");
             expect(utils.formatEther(pool.price)).to.equal("1.0");
-            expect(pool.claimOnly).to.equal(false);
 
 
             // Total allocation: 900
-            console.log("Import Investor Whitelist");
+            console.log("Import Investor");
             await testContract.importInvestors(
                 1,
                 [addr1.address, addr2.address, addr3.address, addr4.address],
@@ -168,51 +171,11 @@ describe("Whitelist", async function () {
             console.log("Balance 1: ", utils.formatEther(await tokenContract.balanceOf(addr1.address)));
             //test_balance(tokenContract, addr1, "1000.0");
 
-            // Not update tokenAddress, revert
-            await expect(testContract.connect(addr1).deposit(1, utils.parseEther("90.0"))).to.revertedWith("Token not set");
-
-            // Now update token address using approval 
-            // function requestChangePoolData(uint64 _poolIdx, uint256 _allocationBusd, uint256 _endDate, address _tokenAddress)
-            await testContract.connect(addr1).requestChangePoolData(1, 0, 0, tokenAddress);
-
-            // now need approve from 2 approvers: owner & addr2
-            await testContract.connect(owner).approveRequestChange();
-            // not change
-            expect((await testContract.getPool(1)).tokenAddress).to.equal(address0);
-            await testContract.connect(addr2).approveRequestChange();
-
-            // now the token updated
-            expect((await testContract.getPool(1)).tokenAddress).to.equal(tokenAddress);
-            // Deposit again
-            testContract.connect(addr1).deposit(1, utils.parseEther("90.0"));
+            await testContract.connect(addr1).deposit(1, utils.parseEther("90.0"));
 
             // make it claimable
             await testContract.connect(addr1).setClaimable(true);
             
-            await expect(testContract.connect(addr2).claim(1)).to.revertedWith("Nothing to claim");
-            // make payment
-            await test_mint(bUSDContract, addr2, "1000");
-            await expect(testContract.connect(addr1).makePayment(1)).to.revertedWith("Not Ready for payment");
-            
-            // set WITHDRAW_ADDRESS
-            await testContract.connect(addr1).requestChangeWithdrawAddress(owner.address);
-            // check address
-            await testContract.connect(owner).approveRequestChange();
-            expect(await testContract.connect(addr1).getWithdrawAddress()).to.equal(address0);
-
-            await expect(testContract.connect(owner).approveRequestChange()).to.revertedWith("Approve already");
-
-
-            await testContract.connect(addr2).approveRequestChange();
-            expect(await testContract.connect(addr1).getWithdrawAddress()).to.equal(owner.address);
-
-            // let requestChangeData = await testContract.requestChangeData();
-            // console.log("xx: ", requestChangeData);
-
-            await testContract.connect(addr2).makePayment(1);
-            await test_balance(bUSDContract, addr2, "700.0"); 
-
-
             // addr4 - claim empty
             await expect(testContract.connect(addr4).claim(1)).to.revertedWith("Nothing to claim");
 
@@ -224,10 +187,8 @@ describe("Whitelist", async function () {
             await testContract.connect(addr2).claim(1)
             await test_balance(tokenContract, addr2, "27.0");
             
-            // claim already - revert
+            // claim again - revert
             await expect(testContract.connect(addr2).claim(1)).to.revertedWith("Nothing to claim");
-            // not payment - claim also revert
-            await expect(testContract.connect(addr1).claim(1)).to.revertedWith("Nothing to claim");
 
             // deposit more, then claim again (total 30%)
             await testContract.connect(addr1).deposit(1, utils.parseEther("180.0"));
@@ -236,12 +197,13 @@ describe("Whitelist", async function () {
             await testContract.connect(addr2).claim(1)
             await test_balance(tokenContract, addr2, "81.0");
 
-            // // claim for add3 => 45 * 3 = 
-            // await testContract.connect(addr3).claim(1)
-            // await test_balance(tokenContract, addr3, "135.0");
+            // claim for add3 => 45 * 3 = 
+            await testContract.connect(addr3).claim(1)
+            await test_balance(tokenContract, addr3, "135.0");
 
         })
 
 
-    });
+    });    
+
 });

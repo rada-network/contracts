@@ -9,7 +9,7 @@ import exp from "constants";
 use(solidity);
 
 describe("LaunchVerse", async function () {
-
+return;
     let launchPadContract: Contract;
     let tokenContract: Contract;
     let bUSDContract: Contract;

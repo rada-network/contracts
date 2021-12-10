@@ -7,13 +7,15 @@ import { utils } from "ethers";
 import { join } from "path/posix";
 import * as fs from 'fs';
 
+let network = 'testnet';
+if (process.argv.includes('mainnet')) network = 'mainnet';
+if (process.argv.includes('matictest')) network = 'matictest';
+if (process.argv.includes('maticmain')) network = 'maticmain';
 
-const network = process.argv.includes('mainnet') ? 'mainnet' : 'testnet';
-config({ path: network == 'mainnet' ? '.env.mainnet' : '.env' });
+config({ path: `.env.${network}` });
 
 const mnemonic = process.env.MNEMONIC;
 const bscscanApiKey = process.env.BSCSCANAPIKEY;
-
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
 task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
@@ -194,13 +196,25 @@ module.exports = {
             url: "https://data-seed-prebsc-1-s1.binance.org:8545",
             chainId: 97,
             gasPrice: 20000000000,
-            accounts: { mnemonic: mnemonic }
+            accounts: [process.env.PRIVATE_KEY]
+            // accounts: { mnemonic: mnemonic }
         },
         mainnet: {
             url: "https://bsc-dataseed.binance.org/",
             chainId: 56,
             gasPrice: 20000000000,
-            accounts: { mnemonic: mnemonic }
+            accounts: [process.env.PRIVATE_KEY]
+            // accounts: { mnemonic: mnemonic }
+        },
+        maticmain: {
+            url: "https://rpc-mainnet.matic.network",
+            chainId: 137,
+            accounts: [process.env.PRIVATE_KEY]
+        },
+        matictest: {
+            url: "https://rpc-mumbai.maticvigil.com",
+            chainId: 80001,
+            accounts: [process.env.PRIVATE_KEY]
         }
     },
     etherscan: {

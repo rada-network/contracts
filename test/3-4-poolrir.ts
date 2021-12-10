@@ -57,7 +57,8 @@ describe("Whitelist", async function () {
         const startDate = Math.floor((Date.now() - 24 * 60 * 60 * 1000) / 1000);
         const endDate = Math.floor((Date.now() + 7 * 24 * 60 * 60 * 1000) / 1000);
 
-        const launchPadFactory = await ethers.getContractFactory("PoolWhitelist");
+        const launchPadFactory = await ethers.getContractFactory("PoolRIR");
+
 
         testContract = await upgrades.deployProxy(launchPadFactory, [
             busdAddress,
@@ -87,7 +88,16 @@ describe("Whitelist", async function () {
         expect(utils.formatEther(_balance)).to.equal(_amount);
     }
 
-    
+    /*
+    string memory _title,
+        uint256 _allocationBusd,
+        uint256 _minAllocationBusd,
+        uint256 _maxAllocationBusd,
+        uint256 _allocationRir,
+        uint256 _price,
+        uint256 _startDate,
+        uint256 _endDate
+        */
     
     describe("Whitelist Pool", async function () {
         it ("Add a Pool", async () => {
@@ -96,6 +106,9 @@ describe("Whitelist", async function () {
             await testContract.addPool(
                 "tk1",
                 utils.parseEther("900"),
+                utils.parseEther("100"),
+                utils.parseEther("300"),
+                utils.parseEther("4"),
                 utils.parseEther("1"),
                 Math.floor(Date.now() / 1000),
                 Math.floor(Date.now() / 1000)
@@ -103,6 +116,9 @@ describe("Whitelist", async function () {
             await testContract.addPool(
                 "elemon-whitelist",
                 utils.parseEther("900"),
+                utils.parseEther("100"),
+                utils.parseEther("300"),
+                utils.parseEther("4"),
                 utils.parseEther("1"),
                 Math.floor(Date.now() / 1000),  // start date
                 Math.floor((Date.now() + 7 * 24 * 60 * 60 * 1000) / 1000)   //end date
@@ -114,7 +130,7 @@ describe("Whitelist", async function () {
             expect(utils.formatEther(pool.allocationBusd)).to.equal("900.0");
             expect(utils.formatEther(pool.price)).to.equal("1.0");
             expect(pool.claimOnly).to.equal(false);
-
+return;
 
             // Total allocation: 900
             console.log("Import Investor Whitelist");

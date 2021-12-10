@@ -9,7 +9,7 @@ import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 
-contract WhitelistPools is
+contract PoolBase is
     Initializable,
     ContextUpgradeable,
     PausableUpgradeable,
@@ -17,17 +17,27 @@ contract WhitelistPools is
 {
     using SafeMathUpgradeable for uint256;
 
+    ERC20 busdToken;
+    ERC20 rirToken;
+
+    function initialize(
+        address _busdAddress,
+        address _rirAddress
+    ) public initializer {
+        __Ownable_init();
+        __Pausable_init();
+
+        busdToken = ERC20(_busdAddress);
+        rirToken = ERC20(_rirAddress);
+
+        setApprover(owner());
+    }
+
     event PoolCreated (
         uint64 poolIndex,
         uint256 timestamp
     );
 
-    event PaymentEvent(
-        uint64 poolIndex,
-        uint256 amountBUSD,
-        address indexed buyer,
-        uint256 timestamp
-    );
 
     event DepositedEvent(
         uint64 poolIndex,
@@ -43,46 +53,44 @@ contract WhitelistPools is
     );
 
 
-    /* address _tokenAddress, */ // Will setup later, not available at the Pool start
-    function initialize(
-        address _bUSDAddress
-    ) public initializer {
-        __Ownable_init();
-        __Pausable_init();
-
-        busdToken = ERC20(_bUSDAddress);
-
-        setApprover(owner());
-    }
-
-
 
     /**
         DATA Structure
      */
-    struct POOL {
+    struct POOL_INFO {
         address tokenAddress;
         uint256 allocationBusd; // total allocation in $
+        uint256 allocationRir; // Max allocation for RIR (in RIR count)
+        uint256 minAllocationBusd; // minimum an investor must prefund
+        uint256 maxAllocationBusd; // maximum an investor can prefund
         uint256 price;
-        uint256 depositedToken; // total deposited in Token
         uint256 startDate;
         uint256 endDate;
-
-        uint256 paidAmount; // for paid
-
         bool claimOnly; // for
         bool locked; // if locked, cannot change pool info
         string title; // readable code
     }
 
-    POOL[] public pools;
+    struct POOL_STAT {
+        uint256 depositedToken; // total deposited in Token
+        uint256 amountBusd; // for paid Busd
+        uint256 amountRir; // for paid RIR
+        uint256 approvedBusd; // for paid Busd
+        uint256 approvedRir; // for paid RIR
+    }
+
+    POOL_INFO[] public pools;
+    mapping(uint64 => POOL_STAT) public poolsStat;
 
     struct Investor {
         uint256 amountBusd; // approved amount in $
         uint256 allocationBusd; // approved amount in $
+        uint256 amountRir; // amount user prefund in RIR
+        uint256 allocationRir; // approved amount in RIR
         uint256 claimedToken; // amount of Token claimed
         bool paid; // mark as paid
         bool approved; // state to make sure this investor is approved
+        bool refunded; // for community pool
     }
 
     struct ChangeData {
@@ -97,20 +105,19 @@ contract WhitelistPools is
     ChangeData public requestChangeData;
 
 
-    ERC20 busdToken;
-    address private WITHDRAW_ADDRESS; /* Address to cashout */
+    address internal WITHDRAW_ADDRESS; /* Address to cashout */
 
     /* Admins List, state for user */
     mapping(address => bool) public admins;
     mapping(address => bool) public approvers;
     bool claimable; // global state for all,
 
-    uint8 private adminCount;
-    uint8 private approverCount;
+    uint8 internal adminCount;
+    uint8 internal approverCount;
 
 
-    mapping(uint256 => mapping(address => Investor)) private investors;
-    mapping(uint256 => address[]) private investorsAddress;
+    mapping(uint256 => mapping(address => Investor)) internal investors;
+    mapping(uint256 => address[]) internal investorsAddress;
 
     /**
         Modifiers
@@ -251,12 +258,12 @@ contract WhitelistPools is
     function poolCount() external view returns (uint64) {
         return uint64(pools.length);
     }
-    function getPool(uint64 _poolIdx) external view returns (POOL memory) {
-        POOL memory pool;
+    function getPool(uint64 _poolIdx) external view returns (POOL_INFO memory) {
+        POOL_INFO memory pool;
         if (_poolIdx >= pools.length) return pool;
         return pools[_poolIdx];
     }
-    function getPools() external view returns (POOL[] memory) {
+    function getPools() external view returns (POOL_INFO[] memory) {
         return pools;
     }
     function poolAddresses(uint64 _poolIdx) external view returns (address[] memory) {
@@ -274,49 +281,6 @@ contract WhitelistPools is
         SETTER
      */
 
-    // Add/update/delete Pool - by Admin
-    function addClaimOnlyPool(
-        string memory _title,
-        address _tokenAddress,
-        uint256 _allocationBusd,
-        uint256 _price
-    ) public virtual onlyAdmin {
-        require(_allocationBusd > 0, "Invalid allocationBusd");
-        require(_price > 0, "Invalid Price");
-
-        POOL memory pool;
-        pool.tokenAddress = _tokenAddress;
-        pool.allocationBusd = _allocationBusd;
-        pool.price = _price;
-        pool.claimOnly = true;
-        pool.title = _title;
-
-        pools.push(pool);
-
-        emit PoolCreated(uint64(pools.length-1), block.timestamp);
-    }
-
-    function addPayablePool(
-        string memory _title,
-        uint256 _allocationBusd,
-        uint256 _price,
-        uint256 _startDate,
-        uint256 _endDate
-    ) public virtual onlyAdmin {
-        require(_allocationBusd > 0, "Invalid allocationBusd");
-        require(_price > 0, "Invalid Price");
-
-        POOL memory pool;
-        pool.allocationBusd = _allocationBusd;
-        pool.price = _price;
-        pool.startDate = _startDate;
-        pool.endDate = _endDate;
-        pool.title = _title;
-
-        pools.push(pool);
-
-        emit PoolCreated(uint64(pools.length-1), block.timestamp);
-    }
 
     function updatePool(
         uint64 _poolIdx,
@@ -329,7 +293,7 @@ contract WhitelistPools is
         require(_price > 0, "Invalid Price");
         require(_poolIdx < pools.length, "Pool not available");
 
-        POOL memory pool = pools[_poolIdx]; // pool info
+        POOL_INFO memory pool = pools[_poolIdx]; // pool info
 
         require(!pool.locked, "Pool locked");
 
@@ -372,14 +336,15 @@ contract WhitelistPools is
     ) public virtual onlyAdmin {
         require(_poolIdx < pools.length, "Pool not available");
         require(_addresses.length == _amountBusds.length, "Length not match");
+        require(_addresses.length == _allocationBusds.length, "Length not match");
 
-        POOL memory pool = pools[_poolIdx]; // pool info
+        POOL_INFO memory pool = pools[_poolIdx]; // pool info
 
         for (uint256 i; i < _addresses.length; i++) {
             Investor memory investor = investors[_poolIdx][_addresses[i]];
             require(!investor.approved, "User is already approved");
             require(
-                investor.claimedToken.mul(pool.price) <= _amountBusds[i],
+                investor.claimedToken.mul(pool.price) <= _allocationBusds[i],
                 "Invalid Amount"
             );
             require(
@@ -409,7 +374,7 @@ contract WhitelistPools is
     function approveInvestors(uint64 _poolIdx) external virtual onlyApprover {
         require(_poolIdx < pools.length, "Pool not available");
 
-        POOL memory pool = pools[_poolIdx]; // pool info
+        POOL_INFO memory pool = pools[_poolIdx]; // pool info
 
         // require pool is locked
         require(pool.locked, "Pool not locked");
@@ -456,13 +421,13 @@ contract WhitelistPools is
     {
         require(_amountToken > 0, "Invalid Amount");
         require(_poolIdx < pools.length, "Pool not available");
-        POOL memory pool = pools[_poolIdx]; // pool info
+        POOL_INFO memory pool = pools[_poolIdx]; // pool info
         require(pool.locked, "Pool not locked");
         // require token set
         require(pool.tokenAddress != address(0), "Token not set");
         // not allow deposit more than need
         require(
-            pool.depositedToken.add(_amountToken).mul(pool.price).div(1e18) <= pool.allocationBusd,
+            poolsStat[_poolIdx].depositedToken.add(_amountToken).mul(pool.price).div(1e18) <= pool.allocationBusd,
             "Eceeds Pool Amount"
         );
         ERC20 _token = ERC20(pool.tokenAddress);
@@ -477,10 +442,18 @@ contract WhitelistPools is
         );
 
         // update total deposited token
-        pools[_poolIdx].depositedToken += _amountToken;
+        poolsStat[_poolIdx].depositedToken += _amountToken;
 
         emit DepositedEvent(_poolIdx, _amountToken, block.timestamp);
     }
+
+
+    /////////////////
+
+
+    //////////////////
+    /* FOR WITHDRAW TOKEN */
+
 
     // Claimed
     function getClaimable(uint64 _poolIdx) public view returns (uint256) {
@@ -490,13 +463,13 @@ contract WhitelistPools is
         if (!investor.approved) return 0; // require approved        
         if (_poolIdx >= pools.length) return 0; // pool not available
 
-        POOL memory pool = pools[_poolIdx]; // pool info
+        POOL_INFO memory pool = pools[_poolIdx]; // pool info
         
         if (!pool.locked) return 0;
         if (!pool.claimOnly && !investor.paid) return 0; // require paid
 
         uint256 _tokenClaimable = investor.allocationBusd
-                                    .mul(pool.depositedToken)
+                                    .mul(poolsStat[_poolIdx].depositedToken)
                                     .div(pool.allocationBusd);
 
         return _tokenClaimable.sub(investor.claimedToken);
@@ -506,7 +479,7 @@ contract WhitelistPools is
         uint256 _claimable = getClaimable(_poolIdx);
         require(_claimable > 0, "Nothing to claim");
 
-        POOL memory pool = pools[_poolIdx]; // pool info
+        POOL_INFO memory pool = pools[_poolIdx]; // pool info
 
         // available claim busd
         ERC20 _token = ERC20(pool.tokenAddress);
@@ -523,59 +496,5 @@ contract WhitelistPools is
 
         emit ClaimEvent(_poolIdx, _claimable, msg.sender, block.timestamp);
     }
-
-
-    /////////////////
-
-    /* Make a payment */
-    function makePayment(
-        uint64 _poolIdx
-    ) public payable virtual {
-        address _address = msg.sender;
-        Investor memory investor = investors[_poolIdx][_address];
-        require(investor.approved, "Not allow to join");
-        require(!investor.paid, "Paid already");
-        require(investor.amountBusd > 1, "Not allow to join pool");
-        
-        // check pool
-        require(_poolIdx < pools.length, "Pool not available");
-        POOL memory pool = pools[_poolIdx]; // pool info
-        require(!pool.claimOnly, "Not require payment");
-        require(pool.locked, "Pool not active");
-
-        // require project is open and not expire
-        require(block.timestamp <= pool.endDate, "The Pool has been expired");
-        require(block.timestamp >= pool.startDate, "The Pool have not started");
-        require(WITHDRAW_ADDRESS != address(0), "Not Ready for payment");
-
-        require(
-            busdToken.balanceOf(msg.sender) >= investor.amountBusd,
-            "Not enough BUSD"
-        );
-
-        require(
-            busdToken.transferFrom(msg.sender, WITHDRAW_ADDRESS, investor.amountBusd),
-            "Payment failed"
-        );
-
-        investors[_poolIdx][_address].paid = true;
-
-        // update total RIR
-        pools[_poolIdx].paidAmount += investor.amountBusd;
-        
-        emit PaymentEvent(
-            _poolIdx,
-            investor.amountBusd,
-            msg.sender,
-            block.timestamp
-        );
-    }
-
-
-
-    //////////////////
-    /* FOR WITHDRAW TOKEN */
-
-
 
 }
