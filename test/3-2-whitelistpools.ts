@@ -184,7 +184,7 @@ describe("Whitelist", async function () {
             // now the token updated
             expect((await testContract.getPool(1)).tokenAddress).to.equal(tokenAddress);
             // Deposit again
-            testContract.connect(addr1).deposit(1, utils.parseEther("90.0"));
+            await testContract.connect(addr1).deposit(1, utils.parseEther("90.0"));
 
             // make it claimable
             await testContract.connect(addr1).setClaimable(true);

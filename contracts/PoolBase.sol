@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
+//import "hardhat/console.sol";
 
 contract PoolBase is
     Initializable,
@@ -377,7 +378,7 @@ contract PoolBase is
         require(pool.locked, "34"); // Pool not locked
 
         // check for approved amount
-        uint256 _totalAmounts;
+        uint256 _totalAllocationBusd;
         for (uint256 i; i < investorsAddress[_poolIdx].length; i++) {
             address _address = investorsAddress[_poolIdx][i];
             Investor memory investor = investors[_poolIdx][_address];
@@ -389,16 +390,18 @@ contract PoolBase is
             );
 
             if (investor.allocationBusd > 1) {
-                _totalAmounts += investor.allocationBusd;
+                _totalAllocationBusd += investor.allocationBusd;
             }
         }
-        require(_totalAmounts <= pool.allocationBusd, "36"); // Eceeds total allocation
+        require(_totalAllocationBusd <= pool.allocationBusd, "36"); // Eceeds total allocation
 
         // approve
         for (uint256 i; i < investorsAddress[_poolIdx].length; i++) {
             address _address = investorsAddress[_poolIdx][i];
             investors[_poolIdx][_address].approved = true;
         }
+
+        poolsStat[_poolIdx].approvedBusd = _totalAllocationBusd;
     }
 
     // unapprove investor
@@ -410,24 +413,29 @@ contract PoolBase is
         investors[_poolIdx][_address].approved = false;
     }
 
+    function getDepositAmount(uint64 _poolIdx, uint8 _percentage) public view returns (uint256) {
+        uint256 _totalRequireDepositBusd = poolsStat[_poolIdx].approvedBusd.mul(100-pools[_poolIdx].fee).div(100); // allocation after fee
+        return _totalRequireDepositBusd.mul(_percentage).div(100);
+    }
+
     // Deposit into pool - by Admin
     function deposit(uint64 _poolIdx, uint256 _amountToken)
         external
         payable
-        onlyAdmin
+        onlyModerator
     {
         require(_amountToken > 0 && _poolIdx < pools.length, "38"); // Invalid Data
-        POOL_INFO memory pool = pools[_poolIdx]; // pool info
+        //POOL_INFO memory pool = pools[_poolIdx]; // pool info
         // require token set
-        require(pool.locked && pool.tokenAddress != address(0), "39"); // Pool not ready
+        require(pools[_poolIdx].locked && pools[_poolIdx].tokenAddress != address(0), "39"); // Pool not ready
         // not allow deposit more than need
-        uint256 _totalDepositedValueBusd = poolsStat[_poolIdx].depositedToken.add(_amountToken).mul(pool.price).div(1e18); // deposited convert to busd
-        uint256 _totalRequireDepositBusd = pool.allocationBusd.mul(100-pool.fee).div(100); // allocation after fee
+        uint256 _totalDepositedValueBusd = poolsStat[_poolIdx].depositedToken.add(_amountToken).mul(pools[_poolIdx].price).div(1e18); // deposited convert to busd
+        // uint256 _totalRequireDepositBusd = poolsStat[_poolIdx].approvedBusd.mul(100-pools[_poolIdx].fee).div(100); // allocation after fee
         require(
-            _totalDepositedValueBusd <= _totalRequireDepositBusd,
+            _totalDepositedValueBusd <= getDepositAmount(_poolIdx, 100),
             "40" // Eceeds Pool Amount
         );
-        ERC20 _token = ERC20(pool.tokenAddress);
+        ERC20 _token = ERC20(pools[_poolIdx].tokenAddress);
         require(
             _amountToken <= _token.balanceOf(msg.sender),
             "41" // Not enough Token
@@ -478,14 +486,14 @@ contract PoolBase is
         
         if (!investor.approved) return 0; // require approved        
 
-        POOL_INFO memory pool = pools[_poolIdx]; // pool info
+        // POOL_INFO memory pool = pools[_poolIdx]; // pool info
         
-        if (!pool.locked) return 0;
-        if (!pool.claimOnly && !investor.paid) return 0; // require paid
+        if (!pools[_poolIdx].locked) return 0;
+        if (!pools[_poolIdx].claimOnly && !investor.paid) return 0; // require paid
 
         uint256 _tokenClaimable = investor.allocationBusd
                                     .mul(poolsStat[_poolIdx].depositedToken)
-                                    .div(pool.allocationBusd);
+                                    .div(poolsStat[_poolIdx].approvedBusd);
 
         return _tokenClaimable.sub(investor.claimedToken);
     }
