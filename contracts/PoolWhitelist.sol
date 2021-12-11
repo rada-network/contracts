@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.5;
 
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
@@ -9,6 +9,7 @@ contract PoolWhitelist is
 {
     using SafeMathUpgradeable for uint256;
 
+    string constant POOL_TYPE = "whitelist";
 
     event PaymentEvent(
         uint64 poolIndex,
@@ -24,8 +25,8 @@ contract PoolWhitelist is
         uint256 _startDate,
         uint256 _endDate
     ) public virtual onlyAdmin {
-        require(_allocationBusd > 0, "Invalid allocationBusd");
-        require(_price > 0, "Invalid Price");
+        require(_allocationBusd > 0, "47"); // Invalid allocationBusd
+        require(_price > 0, "48"); // Invalid Price
 
         POOL_INFO memory pool;
         pool.allocationBusd = _allocationBusd;
@@ -46,29 +47,29 @@ contract PoolWhitelist is
     ) public payable virtual {
         address _address = msg.sender;
         Investor memory investor = investors[_poolIdx][_address];
-        require(investor.approved, "Not allow to join");
-        require(!investor.paid, "Paid already");
-        require(investor.amountBusd > 1, "Not allow to join pool");
+        require(investor.approved, "49"); // Not allow to join
+        require(!investor.paid, "50"); // Paid already
+        require(investor.amountBusd > 1, "51"); // Not allow to join pool
         
         // check pool
-        require(_poolIdx < pools.length, "Pool not available");
+        require(_poolIdx < pools.length, "52"); // Pool not available
         POOL_INFO memory pool = pools[_poolIdx]; // pool info
-        require(!pool.claimOnly, "Not require payment");
-        require(pool.locked, "Pool not active");
+        require(!pool.claimOnly, "53"); // Not require payment
+        require(pool.locked, "54"); // Pool not active
 
         // require project is open and not expire
-        require(block.timestamp <= pool.endDate, "The Pool has been expired");
-        require(block.timestamp >= pool.startDate, "The Pool have not started");
-        require(WITHDRAW_ADDRESS != address(0), "Not Ready for payment");
+        require(block.timestamp <= pool.endDate, "55"); // The Pool has been expired
+        require(block.timestamp >= pool.startDate, "56"); // The Pool have not started
+        require(WITHDRAW_ADDRESS != address(0), "57"); // Not Ready for payment
 
         require(
             busdToken.balanceOf(msg.sender) >= investor.amountBusd,
-            "Not enough BUSD"
+            "58" // Not enough BUSD
         );
 
         require(
             busdToken.transferFrom(msg.sender, WITHDRAW_ADDRESS, investor.amountBusd),
-            "Payment failed"
+            "59" // Payment failed
         );
 
         investors[_poolIdx][_address].paid = true;

@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.5;
 
 import "./PoolBase.sol";
@@ -7,6 +7,8 @@ contract PoolRIR is
     PoolBase
 {
     using SafeMathUpgradeable for uint256;
+
+    string constant POOL_TYPE = "rir";
 
     event PaymentEvent(
         uint64 poolIndex,
@@ -18,6 +20,7 @@ contract PoolRIR is
 
     uint16 constant RIR_RATE = 100;
     mapping(uint256 => uint256) rirInvestorCounts;
+    mapping(uint256 => bool) withdrawedPools;
 
     // Add/update/delete Pool - by Admin
     function addPool(
@@ -28,10 +31,12 @@ contract PoolRIR is
         uint256 _allocationRir,
         uint256 _price,
         uint256 _startDate,
-        uint256 _endDate
+        uint256 _endDate,
+        uint8   _fee
     ) public virtual onlyAdmin {
-        require(_allocationBusd > 0, "Invalid allocationBusd");
-        require(_price > 0, "Invalid Price");
+        require(_allocationBusd > 0, "80"); // Invalid allocationBusd
+        require(_price > 0, "81"); // Invalid Price
+        require(_fee < 100, "82"); // Invalid Fee
 
 
         POOL_INFO memory pool;
@@ -43,6 +48,7 @@ contract PoolRIR is
         pool.startDate = _startDate;
         pool.endDate = _endDate;
         pool.title = _title;
+        pool.fee = _fee;
 
         pools.push(pool);
 
@@ -58,7 +64,7 @@ contract PoolRIR is
         uint256[] memory _amountBusds,
         uint256[] memory _allocationBusds
     ) override public virtual onlyAdmin {
-        require(false, "Not allow in RIR Pool");
+        require(false, "83"); // Not allow in RIR Pool
     }
 
     
@@ -69,30 +75,21 @@ contract PoolRIR is
         uint256[] memory _allocationBusds,
         uint256[] memory _allocationRirs
     ) public virtual onlyAdmin {
-        require(_poolIdx < pools.length, "Pool not available");
-        require(_addresses.length == _allocationBusds.length, "Length not match");
-        require(_addresses.length == _allocationRirs.length, "Length not match");
+        require(_poolIdx < pools.length, "84"); // Pool not available
+        require(_addresses.length == _allocationBusds.length && _addresses.length == _allocationRirs.length, "85"); // Length not match
 
         POOL_INFO memory pool = pools[_poolIdx]; // pool info
 
         for (uint256 i; i < _addresses.length; i++) {
             Investor memory investor = investors[_poolIdx][_addresses[i]]; 
             // user must paid to be winner
-            require(!investor.paid, "User not paid");
-            require(!investor.approved, "User already approved");
+            require(!investor.paid, "86"); // User not paid
+            require(!investor.approved, "87"); // User already approved
             require(
-                investor.claimedToken.mul(pool.price) <= _allocationBusds[i],
-                "Invalid Amount"
-            );
-            // cannot approve more busd than prefunded
-            require(
-                _allocationBusds[i] <= investor.amountBusd,
-                "Invalid Amount"
-            );
-            // cannot approve more rir than prefunded
-            require(
-                _allocationRirs[i] <= investor.amountRir,
-                "Invalid Amount"
+                investor.claimedToken.mul(pool.price).div(1e18) <= _allocationBusds[i] // Claim over allocation
+                && _allocationBusds[i] <= investor.amountBusd // cannot approve more busd than prefunded
+                && _allocationRirs[i] <= investor.amountRir, // cannot approve more rir than prefunded
+                "88" // Invalid Amount
             );
         }
 
@@ -112,12 +109,12 @@ contract PoolRIR is
 
     // Approve Investor
     function approveInvestors(uint64 _poolIdx) override external virtual onlyApprover {
-        require(_poolIdx < pools.length, "Pool not available");
+        require(_poolIdx < pools.length, "89"); // Pool not available
 
         POOL_INFO memory pool = pools[_poolIdx]; // pool info
 
         // require pool is locked
-        require(pool.locked, "Pool not locked");
+        require(pool.locked, "90"); // Pool not locked
 
         // check for approved amount
         uint256 _totalAllocationBusd;
@@ -126,30 +123,15 @@ contract PoolRIR is
             address _address = investorsAddress[_poolIdx][i];
             Investor memory investor = investors[_poolIdx][_address];
 
-            // make sure the claim less amount
+            
             require(
-                investor.claimedToken.mul(pool.price) <= investor.allocationBusd,
-                "Invalid Amount"
-            );
-            // Busd approve less prefunded
-            require(
-                investor.allocationBusd <= investor.amountBusd,
-                "Invalid Amount"
-            );
-            // Rir approve less prefunded
-            require(
-                investor.allocationRir <= investor.amountRir,
-                "Invalid Amount Rir"
-            );
-            // Rir investor must be approved
-            require(
-                investor.allocationRir > 0 || investor.amountRir == 0,
-                "Invalid Amount Rir"
-            );
-            // Rir allocation converted must less Busd allocation
-            require(
-                investor.allocationRir.mul(RIR_RATE) <= investor.allocationBusd,
-                "Invalid Amount Rir"
+                investor.claimedToken.mul(pool.price).div(1e18) <= investor.allocationBusd // make sure the claim less amount
+                && investor.allocationBusd <= investor.amountBusd // Busd approve less prefunded
+                && investor.allocationRir <= investor.amountRir // Rir approve less prefunded
+                && (investor.allocationRir > 0 || investor.amountRir == 0) // Rir investor must be approved rir allocation
+                && investor.allocationRir.mul(RIR_RATE) <= investor.allocationBusd // Rir allocation converted must less Busd allocation
+                ,
+                "91"
             );
 
             if (investor.allocationBusd > 1) {
@@ -157,8 +139,8 @@ contract PoolRIR is
             }
             _totalAllocationRir += investor.allocationRir;
         }
-        require(_totalAllocationBusd <= pool.allocationBusd, "Eceeds total allocation Busd");
-        require(_totalAllocationRir <= pool.allocationRir, "Eceeds total allocation RIR");
+        require(_totalAllocationBusd <= pool.allocationBusd, "92"); // Eceeds total allocation Busd
+        require(_totalAllocationRir <= pool.allocationRir, "93"); // Eceeds total allocation RIR
 
         // approve
         for (uint256 i; i < investorsAddress[_poolIdx].length; i++) {
@@ -177,7 +159,7 @@ contract PoolRIR is
         uint256 _amountBusd,
         uint256 _amountRir
     ) public payable virtual {
-        require(_poolIdx < pools.length, "Pool not available");
+        require(_poolIdx < pools.length, "94"); // Pool not available
 
         address _address = msg.sender;
         Investor memory investor = investors[_poolIdx][_address];
@@ -185,37 +167,33 @@ contract PoolRIR is
         
         // check pool
         POOL_INFO memory pool = pools[_poolIdx]; // pool info
-        require(!pool.claimOnly, "Not require payment");
-        require(pool.locked, "Pool not active");
+        require(!pool.claimOnly, "95"); // Not require payment
+        require(pool.locked, "96"); // Pool not active
 
         // require project is open and not expire
-        require(block.timestamp <= pool.endDate, "The Pool has been expired");
-        require(block.timestamp >= pool.startDate, "The Pool have not started");
+        require(block.timestamp <= pool.endDate, "97"); // The Pool has been expired
+        require(block.timestamp >= pool.startDate, "98"); // The Pool have not started
         // require(WITHDRAW_ADDRESS != address(0), "Not Ready for payment"); // pay to contract
 
-        require(_amountBusd > 0 || _amountRir > 0, "Pay nothing");
+        require(_amountBusd > 0 || _amountRir > 0, "99"); // Pay nothing
 
         // not over RIR count
-        require (rirInvestorCounts[_poolIdx] < pool.allocationRir || _amountRir ==  0 || investor.amountRir > 0, "Eceeds RIR allocation");
+        require (rirInvestorCounts[_poolIdx] < pool.allocationRir || _amountRir ==  0 || investor.amountRir > 0, "100"); // Eceeds RIR allocation
 
-        require(_amountBusd == 0 || investor.amountBusd + _amountBusd >= pool.minAllocationBusd, "Eceeds Minimum Busd");
-        require(_amountBusd == 0 || investor.amountBusd + _amountBusd <= pool.maxAllocationBusd, "Eceeds Maximum Busd");
+        require(_amountBusd == 0 || investor.amountBusd + _amountBusd >= pool.minAllocationBusd, "101"); // Eceeds Minimum Busd
+        require(_amountBusd == 0 || investor.amountBusd + _amountBusd <= pool.maxAllocationBusd, "102"); // Eceeds Maximum Busd
 
-
-        require(
-            busdToken.balanceOf(msg.sender) >= _amountBusd,
-            "Not enough BUSD"
-        );
 
         require(
-            busdToken.balanceOf(msg.sender) >= _amountRir,
-            "Not enough RIR"
+            busdToken.balanceOf(msg.sender) >= _amountBusd // Not enough BUSD
+            && busdToken.balanceOf(msg.sender) >= _amountRir, // not enought RIR
+            "103" // Not enough BUSD
         );
 
         if (_amountBusd > 0) {
             require(
                 busdToken.transferFrom(msg.sender, address(this), _amountBusd),
-                "Payment failed"
+                "104" // Payment failed
             );
             investor.amountBusd += _amountBusd;
         }
@@ -224,7 +202,7 @@ contract PoolRIR is
             if (investor.amountRir == 0) rirInvestorCounts[_poolIdx]++;
             require(
                 rirToken.transferFrom(msg.sender, address(this), _amountRir),
-                "Payment failed"
+                "105" // Payment failed
             );
             investor.amountRir += _amountRir;
         }
@@ -243,4 +221,62 @@ contract PoolRIR is
             block.timestamp
         );
     }
+
+    // refund 
+    function getRefundable (uint64 _poolIdx) public view returns (uint256, uint256) {
+        if (_poolIdx >= pools.length) return (0, 0); // pool not available
+
+        address _address = msg.sender;
+        Investor memory investor = investors[_poolIdx][_address];
+        
+        if (
+            !investor.paid
+            || !investor.approved
+            || investor.refunded
+        ) 
+            return (0, 0); // require paid
+        
+        if (!pools[_poolIdx].locked) return (0, 0);
+
+        return (investor.amountBusd.sub(investor.allocationBusd), investor.amountRir.sub(investor.allocationRir));
+    }
+
+    // claim with refund
+    function claim(uint64 _poolIdx) override public payable virtual isClaimable {
+        // refund
+        (uint256 _busdRefundable, uint256 _rirRefundable) = getRefundable(_poolIdx);
+        require( busdToken.balanceOf(address(this)) >= _busdRefundable, "106" ); // Not enough Busd
+        require( rirToken.balanceOf(address(this)) >= _rirRefundable, "107" ); // Not enough Rir
+
+        if (_busdRefundable > 0) {
+            require(
+                busdToken.transfer(msg.sender, _busdRefundable),
+                "108" // ERC20 transfer failed - refund Busd
+            );            
+        }
+        if (_rirRefundable > 0) {
+            require(
+                rirToken.transfer(msg.sender, _rirRefundable),
+                "109" // ERC20 transfer failed - refund Rir
+            );
+        }
+
+        super.claim(_poolIdx);
+    }
+
+
+
+    /* Admin Withdraw BUSD */
+    function withdrawBusdFunds(uint64 _poolIdx) external virtual onlyModerator {
+        require(_poolIdx < pools.length, "94"); // Pool not available
+        require(!withdrawedPools[_poolIdx], "110"); // Pool withdraw already
+        
+        uint256 _allocationBusd = poolsStat[_poolIdx].approvedBusd;
+        require(
+            busdToken.transfer(WITHDRAW_ADDRESS, _allocationBusd),
+            "111"
+        );
+        withdrawedPools[_poolIdx] = true;
+    }
+
 }

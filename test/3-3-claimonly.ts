@@ -138,16 +138,16 @@ describe("Claimonly", async function () {
 
             // try to approve Investor before lock pool
             console.log("Approve Investor");
-            await expect(testContract.connect(addr1).approveInvestors(1)).to.revertedWith("Caller is not an approver");
-            await expect(testContract.connect(addr2).approveInvestors(1)).to.revertedWith("Pool not locked");
+            await expect(testContract.connect(addr1).approveInvestors(1)).to.revertedWith("3");
+            await expect(testContract.connect(addr2).approveInvestors(1)).to.revertedWith("34");
 
             // lock pool
-            await expect(testContract.connect(addr1).lockPool(1)).to.revertedWith("Caller is not an approver");
+            await expect(testContract.connect(addr1).lockPool(1)).to.revertedWith("3");
             await testContract.connect(addr2).lockPool(1);
             expect((await testContract.getPool(1)).locked).to.equal(true);
 
             // now approve Investor - Revert with Eceeds total allocation
-            await expect(testContract.connect(addr2).approveInvestors(1)).to.revertedWith("Eceeds total allocation");
+            await expect(testContract.connect(addr2).approveInvestors(1)).to.revertedWith("36");
 
             // update Investor to reduce allocation
             await testContract.importInvestors(
@@ -163,7 +163,7 @@ describe("Claimonly", async function () {
             // test Claim
             console.log("Test Claim")
             // claim before deposit and mark claimable
-            await expect(testContract.connect(addr1).claim(1)).to.revertedWith("Claim is not available at this time.");
+            await expect(testContract.connect(addr1).claim(1)).to.revertedWith("4");
 
             // deposit
 
@@ -177,7 +177,7 @@ describe("Claimonly", async function () {
             await testContract.connect(addr1).setClaimable(true);
             
             // addr4 - claim empty
-            await expect(testContract.connect(addr4).claim(1)).to.revertedWith("Nothing to claim");
+            await expect(testContract.connect(addr4).claim(1)).to.revertedWith("43");
 
             pool = await testContract.getPool(1);
             let investor = await testContract.getInvestor(1, addr2.address);
@@ -188,7 +188,7 @@ describe("Claimonly", async function () {
             await test_balance(tokenContract, addr2, "27.0");
             
             // claim again - revert
-            await expect(testContract.connect(addr2).claim(1)).to.revertedWith("Nothing to claim");
+            await expect(testContract.connect(addr2).claim(1)).to.revertedWith("43");
 
             // deposit more, then claim again (total 30%)
             await testContract.connect(addr1).deposit(1, utils.parseEther("180.0"));

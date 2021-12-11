@@ -8,7 +8,7 @@ import exp from "constants";
 
 use(solidity);
 
-describe("Whitelist", async function () {
+describe("RIR", async function () {
 
     let testContract: Contract;
     let tokenContract: Contract;
@@ -68,7 +68,7 @@ describe("Whitelist", async function () {
         );
         testContract = await testContract.deployed();
         const launchPadAddress = testContract.address;
-
+        
         // set admin and approver
         await testContract.setAdmin(addr1.address);
         await testContract.setApprover(addr2.address);
@@ -111,7 +111,8 @@ describe("Whitelist", async function () {
                 utils.parseEther("4"),
                 utils.parseEther("1"),
                 Math.floor(Date.now() / 1000),
-                Math.floor(Date.now() / 1000)
+                Math.floor(Date.now() / 1000),
+                0
             );
             await testContract.addPool(
                 "elemon-whitelist",
@@ -121,7 +122,8 @@ describe("Whitelist", async function () {
                 utils.parseEther("4"),
                 utils.parseEther("1"),
                 Math.floor(Date.now() / 1000),  // start date
-                Math.floor((Date.now() + 7 * 24 * 60 * 60 * 1000) / 1000)   //end date
+                Math.floor((Date.now() + 7 * 24 * 60 * 60 * 1000) / 1000),   //end date,
+                0
             );
     
             expect (await testContract.poolCount()).to.equal(2);
@@ -134,16 +136,16 @@ describe("Whitelist", async function () {
 
             await test_mint(bUSDContract, addr2, "1000");
             await test_mint(rirContract, addr2, "10");
-            await expect(testContract.connect(addr1).makePayment(1, utils.parseEther("100"), 0)).to.revertedWith("Pool not active");
+            await expect(testContract.connect(addr1).makePayment(1, utils.parseEther("100"), 0)).to.revertedWith("96");
 
             // lock pool
-            await expect(testContract.connect(addr1).lockPool(1)).to.revertedWith("Caller is not an approver");
+            await expect(testContract.connect(addr1).lockPool(1)).to.revertedWith("3");
             await testContract.connect(addr2).lockPool(1);
             expect((await testContract.getPool(1)).locked).to.equal(true);
 
 
-            await expect(testContract.connect(addr1).makePayment(1, utils.parseEther("1000"), 0)).to.revertedWith("Eceeds Maximum Busd");
-            await expect(testContract.connect(addr1).makePayment(1, utils.parseEther("50"), 0)).to.revertedWith("Eceeds Minimum Busd");
+            await expect(testContract.connect(addr1).makePayment(1, utils.parseEther("1000"), 0)).to.revertedWith("102");
+            await expect(testContract.connect(addr1).makePayment(1, utils.parseEther("50"), 0)).to.revertedWith("101");
             await testContract.connect(addr2).makePayment(1, utils.parseEther("100"), 0);
             await testContract.connect(addr2).makePayment(1, utils.parseEther("0"), 1);
             await testContract.connect(addr2).makePayment(1, utils.parseEther("100"), 1);
@@ -170,11 +172,11 @@ return;
 
             // try to approve Investor before lock pool
             console.log("Approve Investor");
-            await expect(testContract.connect(addr1).approveInvestors(1)).to.revertedWith("Caller is not an approver");
+            await expect(testContract.connect(addr1).approveInvestors(1)).to.revertedWith("3");
             await expect(testContract.connect(addr2).approveInvestors(1)).to.revertedWith("Pool not locked");
 
             // lock pool
-            await expect(testContract.connect(addr1).lockPool(1)).to.revertedWith("Caller is not an approver");
+            await expect(testContract.connect(addr1).lockPool(1)).to.revertedWith("3");
             await testContract.connect(addr2).lockPool(1);
             expect((await testContract.getPool(1)).locked).to.equal(true);
 

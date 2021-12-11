@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.5;
 
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
@@ -9,6 +9,8 @@ contract PoolClaim is
 {
     using SafeMathUpgradeable for uint256;
 
+    string constant POOL_TYPE = "claim";
+
     // Add/update/delete Pool - by Admin
     function addPool(
         string memory _title,
@@ -16,8 +18,8 @@ contract PoolClaim is
         uint256 _allocationBusd,
         uint256 _price
     ) public virtual onlyAdmin {
-        require(_allocationBusd > 0, "Invalid allocationBusd");
-        require(_price > 0, "Invalid Price");
+        require(_allocationBusd > 0, "60"); // Invalid allocationBusd
+        require(_price > 0, "61"); // Invalid Price
 
         POOL_INFO memory pool;
         pool.tokenAddress = _tokenAddress;

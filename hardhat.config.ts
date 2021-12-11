@@ -1,11 +1,16 @@
 import "@openzeppelin/hardhat-upgrades";
 import "@nomiclabs/hardhat-etherscan";
+import "hardhat-contract-sizer";
+
 import { task } from "hardhat/config";
 import "@nomiclabs/hardhat-waffle";
 import { config } from "dotenv";
 import { utils } from "ethers";
 import { join } from "path/posix";
 import * as fs from 'fs';
+
+//require('hardhat-contract-sizer');
+
 
 let network = 'testnet';
 if (process.argv.includes('mainnet')) network = 'mainnet';
@@ -238,6 +243,12 @@ module.exports = {
     },
     mocha: {
         timeout: 2000000
+    },
+    contractSizer: {
+        alphaSort: true,
+        disambiguatePaths: false,
+        runOnCompile: true,
+        strict: true,
     }
 };
 
