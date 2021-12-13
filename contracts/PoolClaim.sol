@@ -11,27 +11,49 @@ contract PoolClaim is
 
     string constant POOL_TYPE = "claim";
 
-    // Add/update/delete Pool - by Admin
-    function addPool(
-        string memory _title,
-        address _tokenAddress,
-        uint256 _allocationBusd,
-        uint256 _price
+    
+    // Add / Import Investor
+    function importInvestors(
+        uint64 _poolIdx,
+        address[] memory _addresses,
+        uint256[] memory _amountBusds,
+        uint256[] memory _allocationBusds,
+        bool[] memory _refundeds
     ) public virtual onlyAdmin {
-        require(_allocationBusd > 0, "60"); // Invalid allocationBusd
-        require(_price > 0, "61"); // Invalid Price
+        require(_poolIdx < pools.length, "28"); // Pool not available
+        require(
+            _addresses.length == _amountBusds.length
+            && _addresses.length == _allocationBusds.length
+            && _addresses.length == _refundeds.length, "29"); // Length not match
 
-        POOL_INFO memory pool;
-        pool.tokenAddress = _tokenAddress;
-        pool.allocationBusd = _allocationBusd;
-        pool.price = _price;
-        pool.claimOnly = true;
-        pool.title = _title;
+        for (uint256 i; i < _addresses.length; i++) {
+            Investor memory investor = investors[_poolIdx][_addresses[i]];
+            require(!investor.approved, "31"); // User is already approved
+            require(
+                investor.claimedToken.mul(pools[_poolIdx].price) <= _allocationBusds[i] && _allocationBusds[i] <= _amountBusds[i],
+                "32" // Invalid Amount
+            );
+        }
 
-        pools.push(pool);
+        // import
+        for (uint256 i; i < _addresses.length; i++) {
+            address _address = _addresses[i];
+            // check and put to address list: amount is 0 <= new address
+            if (investors[_poolIdx][_address].allocationBusd == 0) {
+                investorsAddress[_poolIdx].push(_address);
+            }
 
-        emit PoolCreated(uint64(pools.length-1), block.timestamp);
+            // update amount & allocation
+            investors[_poolIdx][_address].amountBusd = _amountBusds[i];
+
+            uint256 _allocationBusd = _allocationBusds[i];
+            if (_allocationBusd == 0) _allocationBusd = 1; // using a tiny value, will not valid to claim
+            investors[_poolIdx][_address].allocationBusd = _allocationBusd;
+
+            investors[_poolIdx][_address].refunded = _refundeds[i];
+
+            // claimonly, then mark as paid - only import paid investors
+            investors[_poolIdx][_address].paid = true;
+        }
     }
-
-
 }

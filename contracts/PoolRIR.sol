@@ -22,51 +22,6 @@ contract PoolRIR is
     mapping(uint256 => uint256) rirInvestorCounts;
     mapping(uint256 => bool) withdrawedPools;
 
-    // Add/update/delete Pool - by Admin
-    function addPool(
-        string memory _title,
-        uint256 _allocationBusd,
-        uint256 _minAllocationBusd,
-        uint256 _maxAllocationBusd,
-        uint256 _allocationRir,
-        uint256 _price,
-        uint256 _startDate,
-        uint256 _endDate,
-        uint8   _fee
-    ) public virtual onlyAdmin {
-        require(_allocationBusd > 0, "80"); // Invalid allocationBusd
-        require(_price > 0, "81"); // Invalid Price
-        require(_fee < 100, "82"); // Invalid Fee
-
-
-        POOL_INFO memory pool;
-        pool.allocationBusd = _allocationBusd;
-        pool.minAllocationBusd = _minAllocationBusd;
-        pool.maxAllocationBusd = _maxAllocationBusd;
-        pool.allocationRir = _allocationRir;
-        pool.price = _price;
-        pool.startDate = _startDate;
-        pool.endDate = _endDate;
-        pool.title = _title;
-        pool.fee = _fee;
-
-        pools.push(pool);
-
-        emit PoolCreated(uint64(pools.length-1), block.timestamp);
-    }
-
-
-    
-    // Add / Import Investor - Not allow in RIR Pool
-    function importInvestors(
-        uint64 _poolIdx,
-        address[] memory _addresses,
-        uint256[] memory _amountBusds,
-        uint256[] memory _allocationBusds
-    ) override public virtual onlyAdmin {
-        require(false, "83"); // Not allow in RIR Pool
-    }
-
     
     // Add / Import Allocation for winners
     function importWinners(
@@ -167,7 +122,6 @@ contract PoolRIR is
         
         // check pool
         POOL_INFO memory pool = pools[_poolIdx]; // pool info
-        require(!pool.claimOnly, "95"); // Not require payment
         require(pool.locked, "96"); // Pool not active
 
         // require project is open and not expire
@@ -225,51 +179,6 @@ contract PoolRIR is
             block.timestamp
         );
     }
-
-    // refund 
-    function getRefundable (uint64 _poolIdx) public view returns (uint256, uint256) {
-        if (_poolIdx >= pools.length) return (0, 0); // pool not available
-
-        Investor memory investor = investors[_poolIdx][msg.sender];
-        
-        if (
-            !investor.paid
-            || !investor.approved
-            || investor.refunded
-        ) 
-            return (0, 0); // require paid
-        
-        if (!pools[_poolIdx].locked) return (0, 0);
-
-        return (investor.amountBusd.sub(investor.allocationBusd), investor.amountRir.sub(investor.allocationRir));
-    }
-
-    // claim with refund
-    function claim(uint64 _poolIdx) override public payable virtual isClaimable  {
-        // refund
-        (uint256 _busdRefundable, uint256 _rirRefundable) = getRefundable(_poolIdx);
-        require( busdToken.balanceOf(address(this)) >= _busdRefundable, "106" ); // Not enough Busd
-        require( rirToken.balanceOf(address(this)) >= _rirRefundable, "107" ); // Not enough Rir
-
-        if (_busdRefundable > 0) {
-            require(
-                busdToken.transfer(msg.sender, _busdRefundable),
-                "108" // ERC20 transfer failed - refund Busd
-            );            
-        }
-        if (_rirRefundable > 0) {
-            require(
-                rirToken.transfer(msg.sender, _rirRefundable),
-                "109" // ERC20 transfer failed - refund Rir
-            );
-        }
-
-        // refunded
-        investors[_poolIdx][msg.sender].refunded = true;
-
-        super.claim(_poolIdx);
-    }
-
 
 
     /* Admin Withdraw BUSD */

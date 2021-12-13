@@ -8,7 +8,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
-//import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 contract PoolBase is
     Initializable,
@@ -67,7 +67,6 @@ contract PoolBase is
         uint256 price;
         uint256 startDate;
         uint256 endDate;
-        bool claimOnly; // for
         bool locked; // if locked, cannot change pool info
         uint8 fee; // percentage
         string title; // readable code        
@@ -282,6 +281,38 @@ contract PoolBase is
     /**
         SETTER
      */
+    // Add/update/delete Pool - by Admin
+    function addPool(
+        string memory _title,
+        uint256 _allocationBusd,
+        uint256 _minAllocationBusd,
+        uint256 _maxAllocationBusd,
+        uint256 _allocationRir,
+        uint256 _price,
+        uint256 _startDate,
+        uint256 _endDate,
+        uint8   _fee
+    ) public virtual onlyAdmin {
+        require(_allocationBusd > 0, "80"); // Invalid allocationBusd
+        require(_price > 0, "81"); // Invalid Price
+        require(_fee < 100, "82"); // Invalid Fee
+
+
+        POOL_INFO memory pool;
+        pool.allocationBusd = _allocationBusd;
+        pool.minAllocationBusd = _minAllocationBusd;
+        pool.maxAllocationBusd = _maxAllocationBusd;
+        pool.allocationRir = _allocationRir;
+        pool.price = _price;
+        pool.startDate = _startDate;
+        pool.endDate = _endDate;
+        pool.title = _title;
+        pool.fee = _fee;
+
+        pools.push(pool);
+
+        emit PoolCreated(uint64(pools.length-1), block.timestamp);
+    }
 
 
     function updatePool(
@@ -328,45 +359,6 @@ contract PoolBase is
         pools[_poolIdx].locked = false;
     }
 
-    
-    // Add / Import Investor
-    function importInvestors(
-        uint64 _poolIdx,
-        address[] memory _addresses,
-        uint256[] memory _amountBusds,
-        uint256[] memory _allocationBusds
-    ) public virtual onlyAdmin {
-        require(_poolIdx < pools.length, "28"); // Pool not available
-        require(_addresses.length == _amountBusds.length, "29"); // Length not match
-        require(_addresses.length == _allocationBusds.length, "30"); // Length not match
-
-        POOL_INFO memory pool = pools[_poolIdx]; // pool info
-
-        for (uint256 i; i < _addresses.length; i++) {
-            Investor memory investor = investors[_poolIdx][_addresses[i]];
-            require(!investor.approved, "31"); // User is already approved
-            require(
-                investor.claimedToken.mul(pool.price) <= _allocationBusds[i] && _allocationBusds[i] <= _amountBusds[i],
-                "32" // Invalid Amount
-            );
-        }
-
-        // import
-        for (uint256 i; i < _addresses.length; i++) {
-            address _address = _addresses[i];
-            // check and put to address list: amount is 0 <= new address
-            if (investors[_poolIdx][_address].allocationBusd == 0) {
-                investorsAddress[_poolIdx].push(_address);
-            }
-
-            // update amount & allocation
-            investors[_poolIdx][_address].amountBusd = _amountBusds[i];
-
-            uint256 _allocationBusd = _allocationBusds[i];
-            if (_allocationBusd == 0) _allocationBusd = 1; // using a tiny value, will not valid to claim
-            investors[_poolIdx][_address].allocationBusd = _allocationBusd;
-        }
-    }
 
     // Approve Investor
     function approveInvestors(uint64 _poolIdx) external virtual onlyApprover {
@@ -470,15 +462,33 @@ contract PoolBase is
         POOL_INFO memory pool = pools[_poolIdx]; // pool info
         
         if (!pool.locked) return 0;
-        if (!pool.claimOnly && !investor.paid) return 0; // require paid
+        if (!investor.paid) return 0; // require paid
 
         uint256 _tokenClaimable = investor.allocationBusd.mul(100-pool.fee).div(100).mul(1e18).div(pool.price);
 
         return _tokenClaimable;
     }
 
+    // refund 
+    function getRefundable (uint64 _poolIdx) public view virtual returns (uint256, uint256) {
+        if (_poolIdx >= pools.length) return (0, 0); // pool not available
+
+        Investor memory investor = investors[_poolIdx][msg.sender];
+        
+        if (
+            !pools[_poolIdx].locked
+            || !investor.paid
+            || !investor.approved
+            || investor.refunded
+        ) 
+            return (0, 0); // require paid
+        
+        return (investor.amountBusd.sub(investor.allocationBusd), investor.amountRir.sub(investor.allocationRir));
+    }
+
+
     // Claimed
-    function getClaimable(uint64 _poolIdx) public view returns (uint256) {
+    function getClaimable(uint64 _poolIdx) public view virtual returns (uint256) {
         if (_poolIdx >= pools.length) return 0; // pool not available
 
         address _address = msg.sender;
@@ -489,7 +499,7 @@ contract PoolBase is
         // POOL_INFO memory pool = pools[_poolIdx]; // pool info
         
         if (!pools[_poolIdx].locked) return 0;
-        if (!pools[_poolIdx].claimOnly && !investor.paid) return 0; // require paid
+        if (!investor.paid) return 0; // require paid
 
         uint256 _tokenClaimable = investor.allocationBusd
                                     .mul(poolsStat[_poolIdx].depositedToken)
@@ -499,25 +509,48 @@ contract PoolBase is
     }
 
     function claim(uint64 _poolIdx) public payable virtual isClaimable {
+
+        if (investors[_poolIdx][msg.sender].refunded == false) {
+            (uint256 _busdRefundable, uint256 _rirRefundable) = getRefundable(_poolIdx);
+
+            require( busdToken.balanceOf(address(this)) >= _busdRefundable, "106" ); // Not enough Busd
+            require( rirToken.balanceOf(address(this)) >= _rirRefundable, "107" ); // Not enough Rir
+
+            if (_busdRefundable > 0) {
+                require(
+                    busdToken.transfer(msg.sender, _busdRefundable),
+                    "108" // ERC20 transfer failed - refund Busd
+                );            
+            }
+            if (_rirRefundable > 0) {
+                require(
+                    rirToken.transfer(msg.sender, _rirRefundable),
+                    "109" // ERC20 transfer failed - refund Rir
+                );
+            }
+
+            // refunded
+            investors[_poolIdx][msg.sender].refunded = true;
+        }
+
+        // claim token
         uint256 _claimable = getClaimable(_poolIdx);
-        require(_claimable > 0, "43"); // Nothing to claim
+        if (_claimable > 0) {
+            // available claim busd
+            ERC20 _token = ERC20(pools[_poolIdx].tokenAddress);
+            require(
+                _token.balanceOf(address(this)) >= _claimable,
+                "44" // Not enough token
+            );
+            require(
+                _token.transfer(msg.sender, _claimable),
+                "45" // ERC20 transfer failed - claim token
+            );
+            // update claimed token
+            investors[_poolIdx][msg.sender].claimedToken += _claimable;
 
-        POOL_INFO memory pool = pools[_poolIdx]; // pool info
-
-        // available claim busd
-        ERC20 _token = ERC20(pool.tokenAddress);
-        require(
-            _token.balanceOf(address(this)) >= _claimable,
-            "44" // Not enough token
-        );
-        require(
-            _token.transfer(msg.sender, _claimable),
-            "45" // ERC20 transfer failed - claim token
-        );
-        // update claimed token
-        investors[_poolIdx][msg.sender].claimedToken += _claimable;
-
-        emit ClaimEvent(_poolIdx, _claimable, msg.sender, block.timestamp);
+            emit ClaimEvent(_poolIdx, _claimable, msg.sender, block.timestamp);
+        }
     }
 
 
