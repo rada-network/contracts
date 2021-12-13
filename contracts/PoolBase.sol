@@ -8,6 +8,8 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
+import "./RIRContract.sol";
+
 import "hardhat/console.sol";
 
 contract PoolBase is
@@ -19,7 +21,7 @@ contract PoolBase is
     using SafeMathUpgradeable for uint256;
 
     ERC20 busdToken;
-    ERC20 rirToken;
+    RIRContract rirToken;
 
     function initialize(
         address _busdAddress,
@@ -29,7 +31,8 @@ contract PoolBase is
         __Pausable_init();
 
         busdToken = ERC20(_busdAddress);
-        rirToken = ERC20(_rirAddress);
+        //rirToken = ERC20(_rirAddress);
+        rirToken = RIRContract(_rirAddress);
 
         setApprover(owner());
     }

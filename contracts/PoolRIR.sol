@@ -37,7 +37,6 @@ contract PoolRIR is
 
         for (uint256 i; i < _addresses.length; i++) {
             Investor memory investor = investors[_poolIdx][_addresses[i]]; 
-
             // user must paid to be winner
             require(investor.paid, "86"); // User not paid
             require(!investor.approved, "87"); // User already approved
@@ -45,7 +44,8 @@ contract PoolRIR is
                 true
                 && investor.claimedToken.mul(pools[_poolIdx].price).div(1e18) <= _allocationBusds[i] // Claim over allocation
                 && _allocationBusds[i] <= investor.amountBusd // cannot approve more busd than prefunded
-                && _allocationRirs[i] <= investor.amountRir, // cannot approve more rir than prefunded
+                && _allocationRirs[i] <= investor.amountRir // cannot approve more rir than prefunded
+                && _allocationRirs[i].mul(RIR_RATE) <= _allocationBusds[i], // cannot approve more rir than busd
                 "88" // Invalid Amount
             );
         }
@@ -94,7 +94,7 @@ contract PoolRIR is
             }
             _totalAllocationRir += investor.allocationRir;
         }
-        require(_totalAllocationBusd <= pool.allocationBusd, "92"); // Eceeds total allocation Busd
+        require(_totalAllocationBusd > 0 && _totalAllocationBusd <= pool.allocationBusd, "92"); // Eceeds total allocation Busd or not import winners
         require(_totalAllocationRir <= pool.allocationRir, "93"); // Eceeds total allocation RIR
 
         // approve
@@ -140,7 +140,7 @@ contract PoolRIR is
 
         require(
             busdToken.balanceOf(msg.sender) >= _amountBusd // Not enough BUSD
-            && busdToken.balanceOf(msg.sender) >= _amountRir, // not enought RIR
+            && rirToken.balanceOf(msg.sender) >= _amountRir, // not enought RIR
             "103" // Not enough BUSD
         );
 
@@ -184,6 +184,7 @@ contract PoolRIR is
     /* Admin Withdraw BUSD */
     function withdrawBusdFunds(uint64 _poolIdx) external virtual onlyModerator {
         require(_poolIdx < pools.length, "94"); // Pool not available
+        require(WITHDRAW_ADDRESS != address(0), "112"); // Withdraw address net set
         require(!withdrawedPools[_poolIdx], "110"); // Pool withdraw already
         
         require(
@@ -193,11 +194,7 @@ contract PoolRIR is
         withdrawedPools[_poolIdx] = true;
 
         // also burn rir
-        require(
-            rirToken.transfer(0x000000000000000000000000000000000000dEaD, poolsStat[_poolIdx].approvedRir),
-            "111"
-        );
-
+        rirToken.burn(poolsStat[_poolIdx].approvedRir);
     }
 
 }

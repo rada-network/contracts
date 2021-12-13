@@ -32,6 +32,7 @@ describe("ClaimOnly", async function () {
 
     beforeEach('Setup', async function () {
         [owner, addr1, addr2, addr3, addr4] = await ethers.getSigners();
+        addrs = await ethers.getSigners();
 
         // Token Busd
         const bUSDFactory = await ethers.getContractFactory("ERC20Token");
