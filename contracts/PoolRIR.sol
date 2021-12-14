@@ -114,58 +114,57 @@ contract PoolRIR is
         uint256 _amountBusd,
         uint256 _amountRir
     ) public payable virtual {
-        require(_poolIdx < pools.length, "94"); // Pool not available
+        require(_poolIdx < pools.length, "Not Available"); // Pool not available
 
-        address _address = msg.sender;
-        Investor memory investor = investors[_poolIdx][_address];
+        Investor memory investor = investors[_poolIdx][msg.sender];
         // require(!investor.paid, "Paid already");
         
         // check pool
         POOL_INFO memory pool = pools[_poolIdx]; // pool info
-        require(pool.locked, "96"); // Pool not active
+        require(pool.locked, "Not Ready"); // Pool not active
 
         // require project is open and not expire
-        require(block.timestamp <= pool.endDate, "97"); // The Pool has been expired
-        require(block.timestamp >= pool.startDate, "98"); // The Pool have not started
+        require(block.timestamp <= pool.endDate, "Expired"); // The Pool has been expired
+        require(block.timestamp >= pool.startDate, "Not Started"); // The Pool have not started
         // require(WITHDRAW_ADDRESS != address(0), "Not Ready for payment"); // pay to contract
 
-        require(_amountBusd > 0 || _amountRir > 0, "99"); // Pay nothing
+        require(_amountBusd > 0 || _amountRir > 0, "Invalid Amount"); // Pay nothing
 
         // not over RIR count
-        require (rirInvestorCounts[_poolIdx].mul(1e18) < pool.allocationRir || _amountRir ==  0 || investor.amountRir > 0, "100"); // Eceeds RIR allocation
+        require (rirInvestorCounts[_poolIdx].mul(1e18) < pool.allocationRir || _amountRir ==  0 || investor.amountRir > 0, "Eceeds RIR Allocation"); // Eceeds RIR allocation
 
-        require(_amountBusd == 0 || investor.amountBusd + _amountBusd >= pool.minAllocationBusd, "101"); // Eceeds Minimum Busd
-        require(_amountBusd == 0 || investor.amountBusd + _amountBusd <= pool.maxAllocationBusd, "102"); // Eceeds Maximum Busd
+        require(_amountBusd == 0 || investor.amountBusd + _amountBusd >= pool.minAllocationBusd, "Under Minimum"); // Eceeds Minimum Busd
+        require(_amountBusd == 0 || investor.amountBusd + _amountBusd <= pool.maxAllocationBusd, "Over Maximum"); // Eceeds Maximum Busd
 
 
         require(
             busdToken.balanceOf(msg.sender) >= _amountBusd // Not enough BUSD
             && rirToken.balanceOf(msg.sender) >= _amountRir, // not enought RIR
-            "103" // Not enough BUSD
+            "Not enough Token" // Not enough BUSD
         );
 
         if (_amountBusd > 0) {
             require(
                 busdToken.transferFrom(msg.sender, address(this), _amountBusd),
-                "104" // Payment failed
+                "Transfer BUSD Failed" // Payment failed
             );
             // put to address array
-            if (investors[_poolIdx][_address].amountBusd == 0) {
+            if (investors[_poolIdx][msg.sender].amountBusd == 0) {
                 investorsAddress[_poolIdx].push(msg.sender);
             }
-            investors[_poolIdx][_address].amountBusd += _amountBusd;
+            investors[_poolIdx][msg.sender].amountBusd += _amountBusd;
         }
 
         if (_amountRir > 0) {
             if (investor.amountRir == 0) rirInvestorCounts[_poolIdx]++;
             require(
                 rirToken.transferFrom(msg.sender, address(this), _amountRir),
-                "105" // Payment failed
+                "Transfer RIR Failed" // Payment failed
             );
-            investors[_poolIdx][_address].amountRir += _amountRir;
+            investors[_poolIdx][msg.sender].amountRir += _amountRir;
         }
 
-        investors[_poolIdx][_address].paid = true;
+        investors[_poolIdx][msg.sender].paid = true;
 
         // update total RIR
         poolsStat[_poolIdx].amountBusd += _amountBusd;

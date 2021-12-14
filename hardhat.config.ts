@@ -112,7 +112,7 @@ task("exec", "Call a task in contract")
 
 
 
-task("deploy", "Deploy a POOL")
+task("deploy-bak", "Deploy a POOL")
     .addParam("pool", "Pool Name")
     .setAction(async (taskArgs, hre) => {
         // check if task exist, then quit
@@ -161,6 +161,61 @@ task("deploy", "Deploy a POOL")
 
         updateDeployedData(deployedData);
     })
+
+task("deploy", "Deploy a POOL")
+    .addParam("contract", "Contract Name")
+    .setAction(async (taskArgs, hre) => {
+        // check if task exist, then quit
+        let deployedData;
+        try{
+            deployedData = require("./.deploy.json") || {};
+        } catch (e) {
+            deployedData = {}
+        }
+        if (deployedData[network] == undefined) deployedData[network] = {}
+        if (deployedData[network][taskArgs.contract] != null) {
+            console.log("Please run remove this Pool before deploy new one");
+            return;
+        }
+
+        // clean before
+        //hre.run("clean");
+
+        const {ethers, upgrades} = hre;
+
+        const contractFactory = await ethers.getContractFactory(taskArgs.contract);
+
+        let launchPadContract = await upgrades.deployProxy(contractFactory, [
+            process.env.BUSD_ADDRESS,
+            process.env.RIR_ADDRESS,
+        ],
+            { unsafeAllowCustomTypes: true }
+        );
+        launchPadContract = await launchPadContract.deployed();
+        const launchPadAddress = launchPadContract.address;
+
+        console.log('Address: ', launchPadAddress);
+        // write to cache
+        deployedData[network][taskArgs.contract] = launchPadAddress
+
+        updateDeployedData(deployedData);
+    })
+
+task("getaddress", "Deploy a POOL")
+    .addParam("contract", "Contract Name")
+    .setAction(async (taskArgs, hre) => {
+        // check if task exist, then quit
+        let deployedData;
+        try{
+            deployedData = require("./.deploy.json") || {};
+        } catch (e) {
+            deployedData = {}
+        }
+        const {ethers, upgrades} = hre;
+        const address = await upgrades.erc1967.getImplementationAddress(deployedData[network][taskArgs.contract]);
+        console.log("Implementation Address: ", address);
+    })        
+    
 
 task("upgrade", "Upgrade a deployed contract")
     .addParam("pool", "Pool Name")

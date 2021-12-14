@@ -140,7 +140,7 @@ contract PoolBase is
         _;
     }
     modifier isClaimable() {
-        require(claimable == true, "4"); // Claim is not available at this time.
+        require(claimable == true, "Unclaimable"); // Claim is not available at this time.
         _;
     }
 
@@ -416,6 +416,7 @@ contract PoolBase is
     // Deposit into pool - by Admin
     function deposit(uint64 _poolIdx, uint256 _amountToken)
         external
+        virtual
         payable
         onlyModerator
     {
@@ -492,6 +493,8 @@ contract PoolBase is
 
     // Claimed
     function getClaimable(uint64 _poolIdx) public view virtual returns (uint256) {
+        if (!claimable) return 0; // not allow at the moment
+
         if (_poolIdx >= pools.length) return 0; // pool not available
 
         address _address = msg.sender;
@@ -511,30 +514,34 @@ contract PoolBase is
         return _tokenClaimable.sub(investor.claimedToken);
     }
 
-    function claim(uint64 _poolIdx) public payable virtual isClaimable {
-
+    function refund(uint64 _poolIdx) internal isClaimable {
         if (investors[_poolIdx][msg.sender].refunded == false) {
             (uint256 _busdRefundable, uint256 _rirRefundable) = getRefundable(_poolIdx);
 
-            require( busdToken.balanceOf(address(this)) >= _busdRefundable, "106" ); // Not enough Busd
-            require( rirToken.balanceOf(address(this)) >= _rirRefundable, "107" ); // Not enough Rir
+            require( busdToken.balanceOf(address(this)) >= _busdRefundable, "Not enough BUSD" ); // Not enough Busd
+            require( rirToken.balanceOf(address(this)) >= _rirRefundable, "Not enough RIR" ); // Not enough Rir
 
             if (_busdRefundable > 0) {
                 require(
                     busdToken.transfer(msg.sender, _busdRefundable),
-                    "108" // ERC20 transfer failed - refund Busd
+                    "Refund BUSD Failed" // ERC20 transfer failed - refund Busd
                 );            
             }
             if (_rirRefundable > 0) {
                 require(
                     rirToken.transfer(msg.sender, _rirRefundable),
-                    "109" // ERC20 transfer failed - refund Rir
+                    "Refund RIR Failed" // ERC20 transfer failed - refund Rir
                 );
             }
 
             // refunded
             investors[_poolIdx][msg.sender].refunded = true;
-        }
+        }        
+    }
+
+    function claim(uint64 _poolIdx) public payable virtual isClaimable {
+
+        refund(_poolIdx);
 
         // claim token
         uint256 _claimable = getClaimable(_poolIdx);
@@ -543,11 +550,11 @@ contract PoolBase is
             ERC20 _token = ERC20(pools[_poolIdx].tokenAddress);
             require(
                 _token.balanceOf(address(this)) >= _claimable,
-                "44" // Not enough token
+                "Not enough Token" // Not enough token
             );
             require(
                 _token.transfer(msg.sender, _claimable),
-                "45" // ERC20 transfer failed - claim token
+                "Claim Token Failed" // ERC20 transfer failed - claim token
             );
             // update claimed token
             investors[_poolIdx][msg.sender].claimedToken += _claimable;

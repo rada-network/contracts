@@ -282,7 +282,7 @@ describe("ClaimOnly", async function () {
         await setWithdrawAddress();
 
         // claim before enable
-        await expect(testContract.connect(addr2).claim(PoolIndex)).to.revertedWith("4");
+        await expect(testContract.connect(addr2).claim(PoolIndex)).to.revertedWith("Unclaimable");
 
         // enable claimable
         await testContract.connect(addr2).setClaimable(true);
@@ -320,7 +320,7 @@ describe("ClaimOnly", async function () {
         await test_balance(bUSDContract, addr3, "0.0"); // no refund
 
         // Investor 4: refunded, claim With refund
-        await expect(testContract.connect(addr4).claim(PoolIndex)).to.revertedWith("106"); // not enough busd to refund
+        await expect(testContract.connect(addr4).claim(PoolIndex)).to.revertedWith("Not enough BUSD"); // not enough busd to refund
         // await test_mint(bUSDContract, testContract, "1000");
         await bUSDContract.mint(testContract.address, pe("1000"));
         await testContract.connect(addr4).claim(PoolIndex);

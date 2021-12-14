@@ -13,13 +13,24 @@ contract PoolShare is
     // string constant POOL_TYPE = "share";
     mapping(uint256 => uint256) depositedBusd;
 
+    function deposit(uint64 _poolIdx, uint256 _amountToken)
+        external
+        override
+        payable
+        virtual
+        onlyModerator
+    {
+        require(false, "120");
+    }
+
+
     // Deposit into pool - by Admin
-    function deposit(uint64 _poolIdx, uint256 _amountToken, uint256 _amountBusd)
+    function depositBusd(uint64 _poolIdx, uint256 _amountToken, uint256 _amountBusd)
         external
         payable
         onlyModerator
     {
-        require(_amountToken > 0 && _poolIdx < pools.length, "38"); // Invalid Data
+        require(_amountToken > 0 && _amountBusd > 0 && _poolIdx < pools.length, "38"); // Invalid Data
         //POOL_INFO memory pool = pools[_poolIdx]; // pool info
         // require token set
         // require(pools[_poolIdx].locked && pools[_poolIdx].tokenAddress != address(0), "39"); // Pool not ready
@@ -72,27 +83,7 @@ contract PoolShare is
 
     function claim(uint64 _poolIdx) override public payable virtual isClaimable {
 
-        if (investors[_poolIdx][msg.sender].refunded == false) {
-            (uint256 _busdRefundable, uint256 _rirRefundable) = getRefundable(_poolIdx);
-            require( busdToken.balanceOf(address(this)) >= _busdRefundable, "106" ); // Not enough Busd
-            require( rirToken.balanceOf(address(this)) >= _rirRefundable, "107" ); // Not enough Rir
-
-            if (_busdRefundable > 0) {
-                require(
-                    busdToken.transfer(msg.sender, _busdRefundable),
-                    "108" // ERC20 transfer failed - refund Busd
-                );            
-            }
-            if (_rirRefundable > 0) {
-                require(
-                    rirToken.transfer(msg.sender, _rirRefundable),
-                    "109" // ERC20 transfer failed - refund Rir
-                );
-            }
-
-            // refunded
-            investors[_poolIdx][msg.sender].refunded = true;
-        }
+        refund(_poolIdx);
 
         // claim token
         uint256 _claimable = getClaimable(_poolIdx);
@@ -100,11 +91,11 @@ contract PoolShare is
             // available claim busd
             require(
                 busdToken.balanceOf(address(this)) >= _claimable,
-                "44" // Not enough token
+                "Not enough BUSD" // Not enough token
             );
             require(
                 busdToken.transfer(msg.sender, _claimable),
-                "45" // ERC20 transfer failed - claim token
+                "Claim BUSD Failed" // ERC20 transfer failed - claim token
             );
             // update claimed token
             investors[_poolIdx][msg.sender].claimedToken += _claimable;

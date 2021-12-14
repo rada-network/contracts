@@ -245,20 +245,20 @@ describe("Whitelist", async function () {
         await testContract.connect(addr2).lockPool(PoolIndex);
 
         // payment before approve
-        await expect(testContract.connect(addr1).makePayment(PoolIndex)).to.revertedWith("49"); // Investor not approved
+        await expect(testContract.connect(addr1).makePayment(PoolIndex)).to.revertedWith("Not Allow"); // Investor not approved
 
         // approve
         await testContract.connect(addr2).approveInvestors(PoolIndex);
         
-        await expect(testContract.connect(addr1).makePayment(PoolIndex)).to.revertedWith("57"); // Not set Withdraw Address - address to receive BUSD
+        await expect(testContract.connect(addr1).makePayment(PoolIndex)).to.revertedWith("Not Ready"); // Not set Withdraw Address - address to receive BUSD
         await setWithdrawAddress();
-        await expect(testContract.connect(addr1).makePayment(PoolIndex)).to.revertedWith("58"); // Not enough busd
+        await expect(testContract.connect(addr1).makePayment(PoolIndex)).to.revertedWith("Not enough BUSD"); // Not enough busd
 
         await test_mint(bUSDContract, addr1, "1000");            
         await testContract.connect(addr1).makePayment(PoolIndex); // success - pay 300
         await test_balance(bUSDContract, addr1, "800.0");
 
-        await expect(testContract.connect(addr1).makePayment(PoolIndex)).to.revertedWith("50"); // pay again, revert paid already
+        await expect(testContract.connect(addr1).makePayment(PoolIndex)).to.revertedWith("Paid Already"); // pay again, revert paid already
     });
 
     it ("Test Deposit", async () => {
@@ -317,7 +317,7 @@ describe("Whitelist", async function () {
         await test_balance(bUSDContract, addr2, "700.0"); // 10%
 
         // claim before enable
-        await expect(testContract.connect(addr2).claim(PoolIndex)).to.revertedWith("4");
+        await expect(testContract.connect(addr2).claim(PoolIndex)).to.revertedWith("Unclaimable");
 
         // enable claimable
         await testContract.connect(addr2).setClaimable(true);

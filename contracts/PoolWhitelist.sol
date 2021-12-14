@@ -63,33 +63,32 @@ contract PoolWhitelist is
     function makePayment(
         uint64 _poolIdx
     ) public payable virtual {
-        address _address = msg.sender;
-        Investor memory investor = investors[_poolIdx][_address];
-        require(investor.approved, "49"); // Not allow to join
-        require(!investor.paid, "50"); // Paid already
-        require(investor.amountBusd > 1, "51"); // Not allow to join pool
-        
         // check pool
-        require(_poolIdx < pools.length, "52"); // Pool not available
+        require(_poolIdx < pools.length, "Not Available"); // Pool not available
+
+        Investor memory investor = investors[_poolIdx][msg.sender];
+        require(investor.approved && investor.amountBusd > 1, "Not Allow"); // Not allow to join
+        require(!investor.paid, "Paid Already"); // Paid already
+        
         POOL_INFO memory pool = pools[_poolIdx]; // pool info
-        require(pool.locked, "54"); // Pool not active
+        require(pool.locked, "Not Ready"); // Pool not active
 
         // require project is open and not expire
-        require(block.timestamp <= pool.endDate, "55"); // The Pool has been expired
-        require(block.timestamp >= pool.startDate, "56"); // The Pool have not started
-        require(WITHDRAW_ADDRESS != address(0), "57"); // Not Ready for payment
+        require(block.timestamp <= pool.endDate, "Expired"); // The Pool has been expired
+        require(block.timestamp >= pool.startDate, "Not Started"); // The Pool have not started
+        require(WITHDRAW_ADDRESS != address(0), "Not Ready"); // Not Ready for payment
 
         require(
             busdToken.balanceOf(msg.sender) >= investor.amountBusd,
-            "58" // Not enough BUSD
+            "Not enough BUSD" // Not enough BUSD
         );
 
         require(
             busdToken.transferFrom(msg.sender, WITHDRAW_ADDRESS, investor.amountBusd),
-            "59" // Payment failed
+            "Payment Failed" // Payment failed
         );
 
-        investors[_poolIdx][_address].paid = true;
+        investors[_poolIdx][msg.sender].paid = true;
 
         // update total RIR
         poolsStat[_poolIdx].amountBusd += investor.amountBusd;
