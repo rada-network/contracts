@@ -33,7 +33,7 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 
 const getDeployedData = () => {
     let deployedData;
-    try{
+    try {
         deployedData = require("./.deploy.json") || {};
     } catch (e) {
         deployedData = {}
@@ -69,15 +69,15 @@ task("view", "Read data from contract")
             return;
         }
 
-        const contractAddress = deployedData[network][taskArgs.pool];        
-        const {ethers, upgrades} = hre;
+        const contractAddress = deployedData[network][taskArgs.pool];
+        const { ethers, upgrades } = hre;
         const deployData = require(`./pools/${taskArgs.pool}.json`)
 
         const contract = await ethers.getContractAt(deployData.contractType, contractAddress);
 
         if (taskArgs.func) {
             console.log(`Get data from contract`)
-            console.log (utils.formatEther(await contract[taskArgs.func]()))
+            console.log(utils.formatEther(await contract[taskArgs.func]()))
         }
 
         updateDeployedData(deployedData);
@@ -96,15 +96,15 @@ task("exec", "Call a task in contract")
             return;
         }
 
-        const contractAddress = deployedData[network][taskArgs.pool];        
-        const {ethers, upgrades} = hre;
+        const contractAddress = deployedData[network][taskArgs.pool];
+        const { ethers, upgrades } = hre;
         const deployData = require(`./pools/${taskArgs.pool}.json`)
 
         const contract = await ethers.getContractAt(deployData.contractType, contractAddress);
 
         if (taskArgs.func) {
             console.log(`Get data from contract`)
-            console.log (await contract[taskArgs.func](taskArgs.p1))
+            console.log(await contract[taskArgs.func](taskArgs.p1))
         }
 
         updateDeployedData(deployedData);
@@ -117,7 +117,7 @@ task("deploy-bak", "Deploy a POOL")
     .setAction(async (taskArgs, hre) => {
         // check if task exist, then quit
         let deployedData;
-        try{
+        try {
             deployedData = require("./.deploy.json") || {};
         } catch (e) {
             deployedData = {}
@@ -131,7 +131,7 @@ task("deploy-bak", "Deploy a POOL")
         // clean before
         //hre.run("clean");
 
-        const {ethers, upgrades} = hre;
+        const { ethers, upgrades } = hre;
         const deployData = require(`./pools/${taskArgs.pool}.json`)
 
         const startDate = Math.floor(Date.parse(deployData.startDate) / 1000);
@@ -167,7 +167,7 @@ task("deploy", "Deploy a POOL")
     .setAction(async (taskArgs, hre) => {
         // check if task exist, then quit
         let deployedData;
-        try{
+        try {
             deployedData = require("./.deploy.json") || {};
         } catch (e) {
             deployedData = {}
@@ -181,7 +181,7 @@ task("deploy", "Deploy a POOL")
         // clean before
         //hre.run("clean");
 
-        const {ethers, upgrades} = hre;
+        const { ethers, upgrades } = hre;
 
         const contractFactory = await ethers.getContractFactory(taskArgs.contract);
 
@@ -206,18 +206,38 @@ task("getaddress", "Deploy a POOL")
     .setAction(async (taskArgs, hre) => {
         // check if task exist, then quit
         let deployedData;
-        try{
+        try {
             deployedData = require("./.deploy.json") || {};
         } catch (e) {
             deployedData = {}
         }
-        const {ethers, upgrades} = hre;
+        const { ethers, upgrades } = hre;
         const address = await upgrades.erc1967.getImplementationAddress(deployedData[network][taskArgs.contract]);
         console.log("Implementation Address: ", address);
-    })        
-    
+    })
+
 
 task("upgrade", "Upgrade a deployed contract")
+    .addParam("contract", "Contract Name")
+    .setAction(async (taskArgs, hre) => {
+        // check if task exist, then quit
+        let deployedData;
+        try {
+            deployedData = require("./.deploy.json") || {};
+        } catch (e) {
+            deployedData = {}
+        }
+
+        const contractAddress = deployedData[network][taskArgs.contract];
+
+        const { ethers, upgrades } = hre;
+
+        const contractFactory = await ethers.getContractFactory(taskArgs.contract);
+        const token = await upgrades.upgradeProxy(contractAddress, contractFactory);
+        console.log("Done");
+    });
+
+task("upgrade-bak", "Upgrade a deployed contract")
     .addParam("pool", "Pool Name")
     .setAction(async (taskArgs, hre) => {
         // check if task exist, then quit
@@ -229,7 +249,7 @@ task("upgrade", "Upgrade a deployed contract")
 
         const contractAddress = deployedData[network][taskArgs.pool];
 
-        const {ethers, upgrades} = hre;
+        const { ethers, upgrades } = hre;
 
         const deployData = require(`./pools/${taskArgs.pool}.json`)
 

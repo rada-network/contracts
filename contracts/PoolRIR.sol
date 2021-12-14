@@ -94,8 +94,8 @@ contract PoolRIR is
             }
             _totalAllocationRir += investor.allocationRir;
         }
-        require(_totalAllocationBusd > 0 && _totalAllocationBusd <= pool.allocationBusd, "92"); // Eceeds total allocation Busd or not import winners
-        require(_totalAllocationRir <= pool.allocationRir, "93"); // Eceeds total allocation RIR
+        require(_totalAllocationBusd > 0 && _totalAllocationBusd <= pool.allocationBusd, "92"); // Exceeds total allocation Busd or not import winners
+        require(_totalAllocationRir <= pool.allocationRir, "93"); // Exceeds total allocation RIR
 
         // approve
         for (uint256 i; i < investorsAddress[_poolIdx].length; i++) {
@@ -131,10 +131,10 @@ contract PoolRIR is
         require(_amountBusd > 0 || _amountRir > 0, "Invalid Amount"); // Pay nothing
 
         // not over RIR count
-        require (rirInvestorCounts[_poolIdx].mul(1e18) < pool.allocationRir || _amountRir ==  0 || investor.amountRir > 0, "Eceeds RIR Allocation"); // Eceeds RIR allocation
+        require (rirInvestorCounts[_poolIdx].mul(1e18) < pool.allocationRir || _amountRir ==  0 || investor.amountRir > 0, "Exceeds RIR Allocation"); // Exceeds RIR allocation
 
-        require(_amountBusd == 0 || investor.amountBusd + _amountBusd >= pool.minAllocationBusd, "Under Minimum"); // Eceeds Minimum Busd
-        require(_amountBusd == 0 || investor.amountBusd + _amountBusd <= pool.maxAllocationBusd, "Over Maximum"); // Eceeds Maximum Busd
+        require(_amountBusd == 0 || investor.amountBusd + _amountBusd >= pool.minAllocationBusd, "Under Minimum"); // Exceeds Minimum Busd
+        require(_amountBusd == 0 || investor.amountBusd + _amountBusd <= pool.maxAllocationBusd, "Over Maximum"); // Exceeds Maximum Busd
 
 
         require(
