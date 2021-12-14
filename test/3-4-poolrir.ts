@@ -187,8 +187,8 @@ describe("RIR", async function () {
 
         // payment before locked
         await expect(testContract.connect(addr1).makePayment(PoolIndex, pe("0"), pe("0"))).to.revertedWith("Invalid Amount"); // revert invalid amounts
-        await expect(testContract.connect(addr1).makePayment(PoolIndex, pe("50"), pe("0"))).to.revertedWith("Under Minimum"); // revert - eceeds min
-        await expect(testContract.connect(addr1).makePayment(PoolIndex, pe("500"), pe("0"))).to.revertedWith("Over Maximum"); // revert - eceeds  ax
+        await expect(testContract.connect(addr1).makePayment(PoolIndex, pe("50"), pe("0"))).to.revertedWith("Under Minimum"); // revert - Exceeds min
+        await expect(testContract.connect(addr1).makePayment(PoolIndex, pe("500"), pe("0"))).to.revertedWith("Over Maximum"); // revert - Exceeds  ax
 
         await test_mint(bUSDContract, addr1, "100");
         await expect(testContract.connect(addr1).makePayment(PoolIndex, pe("100"), pe("1"))).to.revertedWith("Not enough Token"); // revert - not enough rir
@@ -219,7 +219,7 @@ describe("RIR", async function () {
         // over rir allocation
         await test_mint(bUSDContract, addrs[5], "1000");
         await test_mint(rirContract, addrs[5], "10");
-        await expect(testContract.connect(addrs[5]).makePayment(PoolIndex, pe("100"), pe("1"))).to.revertedWith("Eceeds RIR Allocation");  // Revert - rir eceed allocation
+        await expect(testContract.connect(addrs[5]).makePayment(PoolIndex, pe("100"), pe("1"))).to.revertedWith("Exceeds RIR Allocation");  // Revert - rir eceed allocation
 
     });
 
