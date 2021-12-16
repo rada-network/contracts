@@ -274,10 +274,7 @@ contract PoolBase is
     
     // Get maximum 100 address join in a pool
     function getAddresses(uint64 _poolIdx, uint _start, uint _limit) external view returns (address[] memory) {
-        require(_start < investorsAddress[_poolIdx].length && _limit <= 100, "Invalid");
-
-        uint _length = _start + _limit > investorsAddress[_poolIdx].length ? investorsAddress[_poolIdx].length - _start : _limit;
-        
+        uint _length = _start + _limit > investorsAddress[_poolIdx].length ? investorsAddress[_poolIdx].length - _start : _limit;        
         address[] memory _addresses = new address[](_length);
         for (uint i; i<_length; i++)
             _addresses[i] = investorsAddress[_poolIdx][i+_start];
@@ -286,12 +283,8 @@ contract PoolBase is
     
     // Get maximum 100 address join in a pool
     function getApprovedAddresses(uint64 _poolIdx, uint _start, uint _limit) external view returns (address[] memory) {
-        require(_start < poolsStat[_poolIdx].approvedCount && _limit <= 100, "Invalid");
-
-        uint _length = _start + _limit > poolsStat[_poolIdx].approvedCount ? poolsStat[_poolIdx].approvedCount - _start : _limit;
-        
+        uint _length = _start + _limit > poolsStat[_poolIdx].approvedCount ? poolsStat[_poolIdx].approvedCount - _start : _limit;        
         address[] memory _addresses = new address[](_length);
-
         uint i;
         uint j;
         while (i < investorsAddress[_poolIdx].length && j < _start + _length) {
@@ -307,34 +300,7 @@ contract PoolBase is
 
         return _addresses;
     }
-/*
-    // get investors
-    function getInvestors(uint64 _poolIdx, uint _start, uint _limit) external view returns (Investor[] memory) {
-        require(_start < investorsAddress[_poolIdx].length && _limit <= 100, "Invalid");
 
-        uint _length = _start + _limit > investorsAddress[_poolIdx].length ? investorsAddress[_poolIdx].length - _start : _limit;
-        
-        Investor[] memory _investors = new Investor[](_length);
-
-        for (uint i; i<_length; i++)
-            _investors[i] = investors[_poolIdx][investorsAddress[_poolIdx][i+_start]];
-
-        // uint i;
-        // uint j;
-        // while (i < investorsAddress[_poolIdx].length && j < _start + _length) {
-        //     address _address = investorsAddress[_poolIdx][i+_start];
-        //     if (investors[_poolIdx][_address].approved) {
-        //         if (j > _start) {
-        //             _approvedInvestors[j-_start] = investors[_poolIdx][_address];
-        //         }
-        //         j++;
-        //     }
-        //     i++;
-        // }
-        
-        return _investors;
-    }
-*/
     function getInvestor (uint64 _poolIdx, address _address) external view returns (Investor memory) {
         return investors[_poolIdx][_address];
     }
