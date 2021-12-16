@@ -201,7 +201,7 @@ task("deploy", "Deploy a POOL")
         updateDeployedData(deployedData);
     })
 
-task("getaddress", "Deploy a POOL")
+task("verify1", "Deploy a POOL")
     .addParam("contract", "Contract Name")
     .setAction(async (taskArgs, hre) => {
         // check if task exist, then quit
@@ -212,8 +212,11 @@ task("getaddress", "Deploy a POOL")
             deployedData = {}
         }
         const { ethers, upgrades } = hre;
-        const address = await upgrades.erc1967.getImplementationAddress(deployedData[network][taskArgs.contract]);
-        console.log("Implementation Address: ", address);
+        const contractAddress = await upgrades.erc1967.getImplementationAddress(deployedData[network][taskArgs.contract]);
+        await hre.run("verify:verify", {
+            address: contractAddress,
+        });
+        console.log("Implementation Address: ", contractAddress);
     })
 
 
