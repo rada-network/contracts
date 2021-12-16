@@ -81,6 +81,7 @@ contract PoolBase is
         uint256 amountRir; // for paid RIR
         uint256 approvedBusd; // for paid Busd
         uint256 approvedRir; // for paid RIR
+        uint256 approvedCount; // 
     }
 
     POOL_INFO[] public pools;
@@ -259,21 +260,81 @@ contract PoolBase is
     /**
         GETTER
      */ 
-    function poolCount() external view returns (uint64) {
-        return uint64(pools.length);
+    function poolCount() external view returns (uint) {
+        return pools.length;
     }
-    function getPool(uint64 _poolIdx) external view returns (POOL_INFO memory) {
-        POOL_INFO memory pool;
-        if (_poolIdx >= pools.length) return pool;
-        return pools[_poolIdx];
-    }
+
     function getPools() external view returns (POOL_INFO[] memory) {
         return pools;
     }
-    function poolAddresses(uint64 _poolIdx) external view returns (address[] memory) {
-        return investorsAddress[_poolIdx];
-    }
 
+    function getInvestorCount(uint64 _poolIdx) external view returns (uint) {
+        return investorsAddress[_poolIdx].length;
+    }
+    
+    // Get maximum 100 address join in a pool
+    function getAddresses(uint64 _poolIdx, uint _start, uint _limit) external view returns (address[] memory) {
+        require(_start < investorsAddress[_poolIdx].length && _limit <= 100, "Invalid");
+
+        uint _length = _start + _limit > investorsAddress[_poolIdx].length ? investorsAddress[_poolIdx].length - _start : _limit;
+        
+        address[] memory _addresses = new address[](_length);
+        for (uint i; i<_length; i++)
+            _addresses[i] = investorsAddress[_poolIdx][i+_start];
+        return _addresses;
+    }
+    
+    // Get maximum 100 address join in a pool
+    function getApprovedAddresses(uint64 _poolIdx, uint _start, uint _limit) external view returns (address[] memory) {
+        require(_start < poolsStat[_poolIdx].approvedCount && _limit <= 100, "Invalid");
+
+        uint _length = _start + _limit > poolsStat[_poolIdx].approvedCount ? poolsStat[_poolIdx].approvedCount - _start : _limit;
+        
+        address[] memory _addresses = new address[](_length);
+
+        uint i;
+        uint j;
+        while (i < investorsAddress[_poolIdx].length && j < _start + _length) {
+            address _address = investorsAddress[_poolIdx][i];
+            if (investors[_poolIdx][_address].approved && investors[_poolIdx][_address].allocationBusd > 0) {
+                if (j >= _start) { // skip _start items
+                    _addresses[j - _start] = _address;
+                }
+                j++;
+            }
+            i++;
+        }
+
+        return _addresses;
+    }
+/*
+    // get investors
+    function getInvestors(uint64 _poolIdx, uint _start, uint _limit) external view returns (Investor[] memory) {
+        require(_start < investorsAddress[_poolIdx].length && _limit <= 100, "Invalid");
+
+        uint _length = _start + _limit > investorsAddress[_poolIdx].length ? investorsAddress[_poolIdx].length - _start : _limit;
+        
+        Investor[] memory _investors = new Investor[](_length);
+
+        for (uint i; i<_length; i++)
+            _investors[i] = investors[_poolIdx][investorsAddress[_poolIdx][i+_start]];
+
+        // uint i;
+        // uint j;
+        // while (i < investorsAddress[_poolIdx].length && j < _start + _length) {
+        //     address _address = investorsAddress[_poolIdx][i+_start];
+        //     if (investors[_poolIdx][_address].approved) {
+        //         if (j > _start) {
+        //             _approvedInvestors[j-_start] = investors[_poolIdx][_address];
+        //         }
+        //         j++;
+        //     }
+        //     i++;
+        // }
+        
+        return _investors;
+    }
+*/
     function getInvestor (uint64 _poolIdx, address _address) external view returns (Investor memory) {
         return investors[_poolIdx][_address];
     }
@@ -394,8 +455,11 @@ contract PoolBase is
         for (uint256 i; i < investorsAddress[_poolIdx].length; i++) {
             address _address = investorsAddress[_poolIdx][i];
             investors[_poolIdx][_address].approved = true;
+            if (investors[_poolIdx][_address].allocationBusd > 0) {
+                poolsStat[_poolIdx].approvedCount++;
+            }
         }
-
+        
         poolsStat[_poolIdx].approvedBusd = _totalAllocationBusd;
     }
 
@@ -521,6 +585,9 @@ contract PoolBase is
             require( busdToken.balanceOf(address(this)) >= _busdRefundable, "Not enough BUSD" ); // Not enough Busd
             require( rirToken.balanceOf(address(this)) >= _rirRefundable, "Not enough RIR" ); // Not enough Rir
 
+            // refunded
+            investors[_poolIdx][msg.sender].refunded = true;
+
             if (_busdRefundable > 0) {
                 require(
                     busdToken.transfer(msg.sender, _busdRefundable),
@@ -534,8 +601,6 @@ contract PoolBase is
                 );
             }
 
-            // refunded
-            investors[_poolIdx][msg.sender].refunded = true;
         }        
     }
 
@@ -552,12 +617,13 @@ contract PoolBase is
                 _token.balanceOf(address(this)) >= _claimable,
                 "Not enough Token" // Not enough token
             );
+
+            // update claimed token then transfer
+            investors[_poolIdx][msg.sender].claimedToken += _claimable;
             require(
                 _token.transfer(msg.sender, _claimable),
                 "Claim Token Failed" // ERC20 transfer failed - claim token
             );
-            // update claimed token
-            investors[_poolIdx][msg.sender].claimedToken += _claimable;
 
             emit ClaimEvent(_poolIdx, _claimable, msg.sender, block.timestamp);
         }

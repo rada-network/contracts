@@ -93,12 +93,13 @@ contract PoolShare is
                 busdToken.balanceOf(address(this)) >= _claimable,
                 "Not enough BUSD" // Not enough token
             );
+
+            // update claimed token
+            investors[_poolIdx][msg.sender].claimedToken += _claimable;
             require(
                 busdToken.transfer(msg.sender, _claimable),
                 "Claim BUSD Failed" // ERC20 transfer failed - claim token
             );
-            // update claimed token
-            investors[_poolIdx][msg.sender].claimedToken += _claimable;
 
             emit ClaimEvent(_poolIdx, _claimable, msg.sender, block.timestamp);
         }

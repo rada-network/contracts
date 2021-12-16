@@ -101,10 +101,14 @@ contract PoolRIR is
         for (uint256 i; i < investorsAddress[_poolIdx].length; i++) {
             address _address = investorsAddress[_poolIdx][i];
             investors[_poolIdx][_address].approved = true;
+            if (investors[_poolIdx][_address].allocationBusd > 0) {
+                poolsStat[_poolIdx].approvedCount++;
+            }
         }
 
         poolsStat[_poolIdx].approvedBusd = _totalAllocationBusd;
         poolsStat[_poolIdx].approvedRir = _totalAllocationRir;
+        poolsStat[_poolIdx].approvedCount = investorsAddress[_poolIdx].length;
     }
 
 

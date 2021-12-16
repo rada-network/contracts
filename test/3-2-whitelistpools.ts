@@ -132,14 +132,14 @@ describe("Whitelist", async function () {
         await addPool();
 
         expect (await testContract.poolCount()).to.equal(2);
-        let pool = await testContract.getPool(1);
+        let pool = await testContract.pools(1);
         expect(pool.title).to.equal("elemon-whitelist");
         expect(utils.formatEther(pool.allocationBusd)).to.equal("1000.0");
         expect(utils.formatEther(pool.price)).to.equal("1.0");
 
         // call update pool when not lock
         await testContract.connect(addr1).updatePool(PoolIndex, pe("2000"), pe("0.1"), 0, 0);
-        pool = await testContract.getPool(PoolIndex);
+        pool = await testContract.pools(PoolIndex);
         expect(utils.formatEther(pool.allocationBusd)).to.equal("2000.0");
         expect(utils.formatEther(pool.price)).to.equal("0.1");
 
@@ -179,7 +179,7 @@ describe("Whitelist", async function () {
         // lock pool
         await expect(testContract.connect(addr1).lockPool(PoolIndex)).to.revertedWith("3");
         await testContract.connect(addr2).lockPool(PoolIndex);
-        expect((await testContract.getPool(PoolIndex)).locked).to.equal(true);
+        expect((await testContract.pools(PoolIndex)).locked).to.equal(true);
 
         // update Investor to reduce allocation
         await testContract.importInvestors(
@@ -229,11 +229,11 @@ describe("Whitelist", async function () {
         // now need approve from 2 approvers: owner & addr2
         await testContract.connect(owner).approveRequestChange();
         // not change
-        expect((await testContract.getPool(PoolIndex)).tokenAddress).to.equal(address0);
+        expect((await testContract.pools(PoolIndex)).tokenAddress).to.equal(address0);
         await testContract.connect(addr2).approveRequestChange();
 
         // now the token updated
-        expect((await testContract.getPool(PoolIndex)).tokenAddress).to.equal(tokenAddress);
+        expect((await testContract.pools(PoolIndex)).tokenAddress).to.equal(tokenAddress);
     });
 
 
