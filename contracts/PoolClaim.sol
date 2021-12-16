@@ -18,6 +18,7 @@ contract PoolClaim is
         address[] memory _addresses,
         uint256[] memory _amountBusds,
         uint256[] memory _allocationBusds,
+        uint256[] memory _claimedToken,
         bool[] memory _refundeds
     ) public virtual onlyAdmin {
         require(_poolIdx < pools.length, "28"); // Pool not available
@@ -30,7 +31,7 @@ contract PoolClaim is
             Investor memory investor = investors[_poolIdx][_addresses[i]];
             require(!investor.approved, "31"); // User is already approved
             require(
-                investor.claimedToken.mul(pools[_poolIdx].price) <= _allocationBusds[i] && _allocationBusds[i] <= _amountBusds[i],
+                _claimedToken[i].mul(pools[_poolIdx].price) <= _allocationBusds[i] && _allocationBusds[i] <= _amountBusds[i],
                 "32" // Invalid Amount
             );
         }
@@ -49,6 +50,8 @@ contract PoolClaim is
             uint256 _allocationBusd = _allocationBusds[i];
             if (_allocationBusd == 0) _allocationBusd = 1; // using a tiny value, will not valid to claim
             investors[_poolIdx][_address].allocationBusd = _allocationBusd;
+
+            investors[_poolIdx][_address].claimedToken = _claimedToken[i];
 
             investors[_poolIdx][_address].refunded = _refundeds[i];
 

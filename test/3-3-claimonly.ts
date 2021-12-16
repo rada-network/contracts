@@ -111,6 +111,7 @@ describe("ClaimOnly", async function () {
             [addr1.address, addr2.address, addr3.address, addr4.address],
             [pe("200"), pe("300"), pe("600"), pe("400")],
             [pe("200.0"), pe("300.0"), pe("300.0"), pe("200.0")],
+            [0, 0, 0, 0],
             [true, true, true, false] // refunded
         );
     }
@@ -188,6 +189,7 @@ describe("ClaimOnly", async function () {
             [addr4.address],
             [utils.parseEther("400.0")],
             [utils.parseEther("360.0")],
+            [0],
             [false]
         );
 
@@ -200,6 +202,7 @@ describe("ClaimOnly", async function () {
             [addr4.address],
             [utils.parseEther("400.0")],
             [utils.parseEther("100.0")],
+            [0],
             [false]
         );
 
