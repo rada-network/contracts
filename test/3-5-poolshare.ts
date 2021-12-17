@@ -336,7 +336,7 @@ describe("Pool Share", async function () {
         await testContract.connect(addr2).approveInvestors(PoolIndex);
 
         // Deposit - deprecated
-        let _amountToken = await testContract.getDepositAmount(PoolIndex, 10); // get 10% amount depsoti token 
+        let _amountToken = await testContract.getDepositAmountBusd(PoolIndex, 10); // get 10% amount depsoti token 
         expect(fe(_amountToken)).to.equal("90.0");
         await expect(testContract.connect(addr1).deposit(PoolIndex, _amountToken)).to.revertedWith("120"); // deprecated - using deposit with busd
 
@@ -382,7 +382,7 @@ describe("Pool Share", async function () {
 
         // deposit
         await test_mint(bUSDContract, addr1, "100000");
-        let _amountToken = await testContract.getDepositAmount(PoolIndex, 10); // get 10% amount depsoti token 
+        let _amountToken = await testContract.getDepositAmountBusd(PoolIndex, 10); // get 10% amount depsoti token 
         await testContract.connect(addr1).depositBusd(PoolIndex, _amountToken, pe("900")); // deprecated - using deposit with busd
 
         // enable claimable
@@ -399,7 +399,7 @@ describe("Pool Share", async function () {
         await test_balance(bUSDContract, addr2, "990.0"); // no refund
 
         // deposit more
-        _amountToken = await testContract.getDepositAmount(PoolIndex, 20); // get 20% amount depsoti token 
+        _amountToken = await testContract.getDepositAmountBusd(PoolIndex, 20); // get 20% amount depsoti token 
         await testContract.connect(addr1).depositBusd(PoolIndex, _amountToken, pe("1200")); // now 20% sell to 1200
 
         // claim agian

@@ -367,6 +367,13 @@ contract PoolBase is
         if (_endDate > 0) pools[_poolIdx].endDate = _endDate;
     }
 
+    function setToken (uint64 _poolIdx, address _tokenAddress) external virtual onlyAdmin {
+        // set token first time at TGE
+        require(_poolIdx < pools.length, "21"); // Pool not available
+        require(pools[_poolIdx].tokenAddress == address(0), "Set already"); 
+        pools[_poolIdx].tokenAddress = _tokenAddress;
+    }
+
     // Lock / unlock pool - By Approver
     function lockPool(uint64 _poolIdx) public virtual onlyApprover {
         require(_poolIdx < pools.length, "23"); // Pool not available
@@ -438,7 +445,12 @@ contract PoolBase is
         investors[_poolIdx][_address].approved = false;
     }
 
-    function getDepositAmount(uint64 _poolIdx, uint8 _percentage) public view returns (uint256) {
+    function getDepositAmountToken(uint64 _poolIdx, uint8 _percentage) public view returns (uint256) {
+        uint256 _depositAmountBusd = getDepositAmountBusd(_poolIdx, _percentage);
+        return _depositAmountBusd.div(pools[_poolIdx].price).mul(1e18);
+    }
+
+    function getDepositAmountBusd(uint64 _poolIdx, uint8 _percentage) public view returns (uint256) {
         uint256 _totalRequireDepositBusd = poolsStat[_poolIdx].approvedBusd.mul(100-pools[_poolIdx].fee).div(100); // allocation after fee
         return _totalRequireDepositBusd.mul(_percentage).div(100);
     }
@@ -457,7 +469,7 @@ contract PoolBase is
         uint256 _totalDepositedValueBusd = poolsStat[_poolIdx].depositedToken.add(_amountToken).mul(pools[_poolIdx].price).div(1e18); // deposited convert to busd
         // uint256 _totalRequireDepositBusd = poolsStat[_poolIdx].approvedBusd.mul(100-pools[_poolIdx].fee).div(100); // allocation after fee
         require(
-            _totalDepositedValueBusd <= getDepositAmount(_poolIdx, 100),
+            _totalDepositedValueBusd <= getDepositAmountBusd(_poolIdx, 100),
             "40" // Eceeds Pool Amount
         );
         ERC20 _token = ERC20(pools[_poolIdx].tokenAddress);

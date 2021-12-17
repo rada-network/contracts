@@ -344,7 +344,7 @@ describe("RIR", async function () {
         await testContract.connect(addr2).approveInvestors(PoolIndex);
 
         // deposit before setup token
-        let _amountToken = await testContract.getDepositAmount(PoolIndex, 10); // get 10% amount depsoti token 
+        let _amountToken = await testContract.getDepositAmountBusd(PoolIndex, 10); // get 10% amount depsoti token 
         expect(fe(_amountToken)).to.equal("90.0");
         await expect(testContract.connect(addr1).deposit(PoolIndex, _amountToken)).to.revertedWith("39");
 
@@ -359,7 +359,7 @@ describe("RIR", async function () {
 
 
         // deposit more than require
-        _amountToken = await testContract.getDepositAmount(PoolIndex, 90); // get 90% amount depsoti token 
+        _amountToken = await testContract.getDepositAmountBusd(PoolIndex, 90); // get 90% amount depsoti token 
         expect(fe(_amountToken)).to.equal("810.0");
         await expect(testContract.connect(addr1).deposit(PoolIndex, _amountToken + 1)).to.revertedWith("40");
         // deposit full
@@ -404,7 +404,7 @@ describe("RIR", async function () {
         // deposit
         await setTokenAddress();
         await test_mint(tokenContract, addr1, "1000");
-        let _amountToken = await testContract.getDepositAmount(PoolIndex, 10); // get 10% amount depsoti token 
+        let _amountToken = await testContract.getDepositAmountBusd(PoolIndex, 10); // get 10% amount depsoti token 
         await testContract.connect(addr1).deposit(PoolIndex, _amountToken);
 
         // enable claimable
@@ -421,7 +421,7 @@ describe("RIR", async function () {
         await test_balance(bUSDContract, addr2, "900.0"); // no refund
 
         // deposit more
-        _amountToken = await testContract.getDepositAmount(PoolIndex, 20); // get 20% amount depsoti token 
+        _amountToken = await testContract.getDepositAmountBusd(PoolIndex, 20); // get 20% amount depsoti token 
         await testContract.connect(addr1).deposit(PoolIndex, _amountToken);
 
         // claim agian

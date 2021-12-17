@@ -36,7 +36,7 @@ contract PoolShare is
         uint256 _totalDepositedValueBusd = poolsStat[_poolIdx].depositedToken.add(_amountToken).mul(pools[_poolIdx].price).div(1e18); // deposited convert to busd
         // uint256 _totalRequireDepositBusd = poolsStat[_poolIdx].approvedBusd.mul(100-pools[_poolIdx].fee).div(100); // allocation after fee
         require(
-            _totalDepositedValueBusd <= getDepositAmount(_poolIdx, 100),
+            _totalDepositedValueBusd <= getDepositAmountBusd(_poolIdx, 100),
             "40" // Eceeds Pool Amount
         );
 
