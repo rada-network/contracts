@@ -614,8 +614,10 @@ contract PoolBase is
     {
         // Confirm tokens addresses are different from main sale one
         ERC20 erc20Token = ERC20(_tokenAddress);
+        uint256 _amount = erc20Token.balanceOf(address(this));
+        require (_amount > 0, "N/A");
         require(
-            erc20Token.transfer(WITHDRAW_ADDRESS, erc20Token.balanceOf(address(this))),
+            erc20Token.transfer(WITHDRAW_ADDRESS, _amount),
             "46" // ERC20 Token transfer failed
         );
     }
