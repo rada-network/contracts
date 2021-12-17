@@ -193,12 +193,40 @@ task("deploy", "Deploy a POOL")
         );
         launchPadContract = await launchPadContract.deployed();
         const launchPadAddress = launchPadContract.address;
+        console.log('Deployed to: ', launchPadAddress);
+        // setup WITHDRAW_ADDRESS and admin for PoolXXX contracts
+        if (taskArgs.contract.match(/^Pool/)) {
+            if (process.env.TREASURY_ADDRESS != "") {
+                console.log('requst change withdraw address')
+                await launchPadContract.requestChangeWithdrawAddress(process.env.TREASURY_ADDRESS);
+                // wait for data apply
+                let found = false;
+                while (!found) {
+                    const changeData = await launchPadContract.requestChangeData()
+                    console.log('wait for request apply');
+                    if (changeData.WITHDRAW_ADDRESS != '0x0000000000000000000000000000000000000000') {
+                        found = true;
+                    }
+                }
+                console.log('approve')
+                await launchPadContract.approveRequestChange();
+            }
 
-        console.log('Address: ', launchPadAddress);
+            console.log('setadmin')
+            // add admin
+            if (process.env.ACCOUNTING_ADDRESS != "") await launchPadContract.setAdmin(process.env.ACCOUNTING_ADDRESS);
+
+            // add approver
+            console.log('set approver')
+            if (process.env.APPROVER_ADDRESS != "") await launchPadContract.setApprover(process.env.APPROVER_ADDRESS);
+        }
+
         // write to cache
         deployedData[network][taskArgs.contract] = launchPadAddress
 
         updateDeployedData(deployedData);
+
+        console.log('Done')
     })
 
 task("verify1", "Deploy a POOL")
