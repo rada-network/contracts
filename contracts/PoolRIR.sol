@@ -117,7 +117,7 @@ contract PoolRIR is
         uint64 _poolIdx,
         uint256 _amountBusd,
         uint256 _amountRir
-    ) public payable virtual {
+    ) public virtual {
         require(_poolIdx < pools.length, "Not Available"); // Pool not available
 
         Investor memory investor = investors[_poolIdx][msg.sender];

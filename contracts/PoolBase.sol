@@ -407,7 +407,7 @@ contract PoolBase is
 
             // make sure the claim less amount
             require(
-                investor.claimedToken.mul(pool.price) <= investor.allocationBusd,
+                investor.claimedToken.mul(pool.price).div(1e18) <= investor.allocationBusd,
                 "35" // Invalid Amount
             );
 
@@ -447,7 +447,6 @@ contract PoolBase is
     function deposit(uint64 _poolIdx, uint256 _amountToken)
         external
         virtual
-        payable
         onlyModerator
     {
         require(_amountToken > 0 && _poolIdx < pools.length, "38"); // Invalid Data
@@ -570,7 +569,7 @@ contract PoolBase is
         }        
     }
 
-    function claim(uint64 _poolIdx) public payable virtual isClaimable {
+    function claim(uint64 _poolIdx) public virtual isClaimable {
 
         refund(_poolIdx);
 

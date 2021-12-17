@@ -62,7 +62,7 @@ contract PoolWhitelist is
     /* Make a payment */
     function makePayment(
         uint64 _poolIdx
-    ) public payable virtual {
+    ) public virtual {
         // check pool
         require(_poolIdx < pools.length, "Not Available"); // Pool not available
 

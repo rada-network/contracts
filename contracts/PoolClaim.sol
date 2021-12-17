@@ -31,7 +31,7 @@ contract PoolClaim is
             Investor memory investor = investors[_poolIdx][_addresses[i]];
             require(!investor.approved, "31"); // User is already approved
             require(
-                _claimedToken[i].mul(pools[_poolIdx].price) <= _allocationBusds[i] && _allocationBusds[i] <= _amountBusds[i],
+                _claimedToken[i].mul(pools[_poolIdx].price).div(1e18) <= _allocationBusds[i] && _allocationBusds[i] <= _amountBusds[i],
                 "32" // Invalid Amount
             );
         }
@@ -58,5 +58,20 @@ contract PoolClaim is
             // claimonly, then mark as paid - only import paid investors
             investors[_poolIdx][_address].paid = true;
         }
+    }
+
+    // Update token and history deposited
+    function updateToken(
+        uint64 _poolIdx,
+        address _tokenAddress,
+        uint256 _depositedToken
+    ) public virtual onlyAdmin {
+        require(_poolIdx < pools.length, "21"); // Pool not available
+        POOL_INFO memory pool = pools[_poolIdx]; // pool info
+        require(!pool.locked, "22"); // Pool locked
+
+        // do update
+        if (_tokenAddress != address(0)) pools[_poolIdx].tokenAddress = _tokenAddress;
+        if (_depositedToken > 0) poolsStat[_poolIdx].depositedToken = _depositedToken;
     }
 }

@@ -16,7 +16,6 @@ contract PoolShare is
     function deposit(uint64 _poolIdx, uint256 _amountToken)
         external
         override
-        payable
         virtual
         onlyModerator
     {
@@ -27,7 +26,6 @@ contract PoolShare is
     // Deposit into pool - by Admin
     function depositBusd(uint64 _poolIdx, uint256 _amountToken, uint256 _amountBusd)
         external
-        payable
         onlyModerator
     {
         require(_amountToken > 0 && _amountBusd > 0 && _poolIdx < pools.length, "38"); // Invalid Data
@@ -81,7 +79,7 @@ contract PoolShare is
         return _tokenClaimable.sub(investor.claimedToken);
     }
 
-    function claim(uint64 _poolIdx) override public payable virtual isClaimable {
+    function claim(uint64 _poolIdx) override public virtual isClaimable {
 
         refund(_poolIdx);
 
