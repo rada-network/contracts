@@ -149,23 +149,23 @@ contract PoolRIR is
 
         if (_amountBusd > 0) {
             require(
-                busdToken.transferFrom(msg.sender, address(this), _amountBusd),
+                busdToken.transferFrom(msg.sender, address(this), trimnum(_amountBusd)),
                 "Transfer BUSD Failed" // Payment failed
             );
             // put to address array
             if (investors[_poolIdx][msg.sender].amountBusd == 0) {
                 investorsAddress[_poolIdx].push(msg.sender);
             }
-            investors[_poolIdx][msg.sender].amountBusd += _amountBusd;
+            investors[_poolIdx][msg.sender].amountBusd += trimnum(_amountBusd);
         }
 
         if (_amountRir > 0) {
             if (investor.amountRir == 0) rirInvestorCounts[_poolIdx]++;
             require(
-                rirToken.transferFrom(msg.sender, address(this), _amountRir),
+                rirToken.transferFrom(msg.sender, address(this), trimnum(_amountRir)),
                 "Transfer RIR Failed" // Payment failed
             );
-            investors[_poolIdx][msg.sender].amountRir += _amountRir;
+            investors[_poolIdx][msg.sender].amountRir += trimnum(_amountRir);
         }
 
         investors[_poolIdx][msg.sender].paid = true;

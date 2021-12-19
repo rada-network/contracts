@@ -300,8 +300,8 @@ describe("RIR", async function () {
         await testContract.connect(addr1).importWinners(
             PoolIndex,
             [addrs[1].address, addrs[2].address, addrs[3].address, addrs[4].address, addrs[5].address, addrs[6].address],
-            [pe("200"), pe("100"), pe("100"), pe("200"), pe("200"), pe("200")],
-            [pe("1"), pe("1"), pe("0"), pe("1"), pe("1"), pe("0")]
+            [pe("200"), pe("100"), pe("100"), pe("200"), 100, pe("200")],
+            [pe("1"), pe("1"), pe("0"), pe("1"), 1, pe("0")]
         ); // approve more rir than busd (addrs[2])
 
 
@@ -394,8 +394,8 @@ describe("RIR", async function () {
         await testContract.connect(addr1).importWinners(
             PoolIndex,
             [addrs[1].address, addrs[2].address, addrs[3].address, addrs[4].address, addrs[5].address, addrs[6].address],
-            [pe("200"), pe("100"), pe("100"), pe("200"), pe("200"), pe("200")],
-            [pe("1"), pe("1"), pe("0"), pe("1"), pe("1"), pe("0")]
+            [pe("200"), pe("100"), pe("100"), pe("200"), 100, pe("200")],
+            [pe("1"), pe("1"), pe("0"), pe("1"), 1, pe("0")]
         ); // approve more rir than busd (addrs[2])
 
         // try approve
@@ -432,6 +432,13 @@ describe("RIR", async function () {
         await testContract.connect(addr4).claim(PoolIndex);
         await test_balance(tokenContract, addr4, "54.0"); // 10%, after fee
         await test_balance(bUSDContract, addr4, "800.0"); // no refund
+
+        let clab = await testContract.connect(addrs[5]).getClaimable(PoolIndex);
+        expect(clab).to.equal(0);
+        let [rfbusd, rfrir] = await testContract.connect(addrs[5]).getRefundable(PoolIndex);
+        expect(fe(rfbusd)).to.equal("300.0");
+        expect(fe(rfrir)).to.equal("3.0");
+
 
     });
 

@@ -495,6 +495,9 @@ contract PoolBase is
 
     //////////////////
     /* FOR WITHDRAW TOKEN */
+    function trimnum(uint256 num) internal pure returns(uint256) {
+        return num.div(1e15).mul(1e15);
+    }
 
     function getTotalClaimable (uint64 _poolIdx) public view returns (uint256) {
         if (_poolIdx >= pools.length) return 0; // pool not available
@@ -509,7 +512,8 @@ contract PoolBase is
         if (!pool.locked) return 0;
         if (!investor.paid) return 0; // require paid
 
-        uint256 _tokenClaimable = investor.allocationBusd.mul(100-pool.fee).div(100).mul(1e18).div(pool.price);
+        uint256 _tokenClaimable = trimnum(investor.allocationBusd); // ignore tiny value
+        _tokenClaimable = _tokenClaimable.mul(100-pool.fee).div(100).mul(1e18).div(pool.price);
 
         return _tokenClaimable;
     }
@@ -528,7 +532,7 @@ contract PoolBase is
         ) 
             return (0, 0); // require paid
         
-        return (investor.amountBusd.sub(investor.allocationBusd), investor.amountRir.sub(investor.allocationRir));
+        return (investor.amountBusd.sub(trimnum(investor.allocationBusd)), investor.amountRir.sub(trimnum(investor.allocationRir)));
     }
 
 
@@ -548,7 +552,7 @@ contract PoolBase is
         if (!pools[_poolIdx].locked) return 0;
         if (!investor.paid) return 0; // require paid
 
-        uint256 _tokenClaimable = investor.allocationBusd
+        uint256 _tokenClaimable = trimnum(investor.allocationBusd)
                                     .mul(poolsStat[_poolIdx].depositedToken)
                                     .div(poolsStat[_poolIdx].approvedBusd);
 
@@ -582,6 +586,8 @@ contract PoolBase is
     }
 
     function claim(uint64 _poolIdx) public virtual isClaimable {
+        // need paid & approved to call claim
+        require(_poolIdx < pools.length && investors[_poolIdx][msg.sender].approved && investors[_poolIdx][msg.sender].paid, "Invalid");
 
         refund(_poolIdx);
 
