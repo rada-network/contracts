@@ -18,5 +18,8 @@
     "hardhat-contract-sizer": "^2.1.1",
     "ts-node": "^10.1.0",
     "typescript": "^4.4.4"
+  },
+  "dependencies": {
+    "@chainlink/contracts": "^0.3.0"
   }
 }
