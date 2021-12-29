@@ -4,7 +4,6 @@ import { constants, Contract, utils, BigNumberish, BigNumber } from "ethers"
 import { expect, use, util } from 'chai';
 import { solidity } from 'ethereum-waffle';
 import { Address } from "cluster";
-import exp from "constants";
 
 use(solidity);
 
@@ -248,7 +247,7 @@ describe("RIR", async function () {
         await testContract.connect(addrs[6]).makePayment(PoolIndex, pe("300"), pe("0"));  // more to max        
 
         // now approve Investor - Revert with Not import winner list
-        await expect(testContract.connect(addr2).approveInvestors(PoolIndex)).to.revertedWith("91");
+        await expect(testContract.connect(addr2).approveInvestorsByBatch(PoolIndex, 0, 6)).to.revertedWith("91");
         
         // import winners
 /*
@@ -279,7 +278,7 @@ describe("RIR", async function () {
             [pe("2"), pe("0"), pe("0"), pe("0"), pe("0"), pe("0")]
         ); // approve more rir than busd (addrs[2])
         // approve fail
-        await expect(testContract.connect(addr2).approveInvestors(PoolIndex)).to.revertedWith("91"); // not all rir prefund are approved
+        await expect(testContract.connect(addr2).approveInvestorsByBatch(PoolIndex, 0, 6)).to.revertedWith("91"); // not all rir prefund are approved
 
         await testContract.connect(addr1).importWinners(
             PoolIndex,
@@ -287,7 +286,7 @@ describe("RIR", async function () {
             [pe("300"), pe("100"), pe("100"), pe("200"), pe("200"), pe("200")],
             [pe("1"), pe("1"), pe("0"), pe("1"), pe("1"), pe("0")]
         ); // approve more rir than busd (addrs[2])
-        await expect(testContract.connect(addr2).approveInvestors(PoolIndex)).to.revertedWith("92"); // more rir than allow
+        await expect(testContract.connect(addr2).approveInvestorsByBatch(PoolIndex, 0, 6)).to.revertedWith("92"); // more rir than allow
 
         await testContract.connect(addr1).importWinners(
             PoolIndex,
@@ -295,7 +294,7 @@ describe("RIR", async function () {
             [pe("200"), pe("100"), pe("100"), pe("200"), pe("200"), pe("200")],
             [pe("2"), pe("1"), pe("0"), pe("1"), pe("1"), pe("0")]
         ); // approve more rir than busd (addrs[2])
-        await expect(testContract.connect(addr2).approveInvestors(PoolIndex)).to.revertedWith("93"); // more rir than allow
+        await expect(testContract.connect(addr2).approveInvestorsByBatch(PoolIndex, 0, 6)).to.revertedWith("93"); // more rir than allow
 
         await testContract.connect(addr1).importWinners(
             PoolIndex,
@@ -306,7 +305,10 @@ describe("RIR", async function () {
 
 
         // try approve
-        await testContract.connect(addr2).approveInvestors(PoolIndex);
+        await testContract.connect(addr2).approveInvestorsByBatch(PoolIndex, 0, 2);
+        await testContract.connect(addr2).approveInvestorsByBatch(PoolIndex, 2, 2);
+        await testContract.connect(addr2).approveInvestorsByBatch(PoolIndex, 4, 2);
+        
     })    
 
 
@@ -341,7 +343,9 @@ describe("RIR", async function () {
         ); // approve more rir than busd (addrs[2])
 
         // try approve
-        await testContract.connect(addr2).approveInvestors(PoolIndex);
+        await testContract.connect(addr2).approveInvestorsByBatch(PoolIndex, 0, 2);
+        await testContract.connect(addr2).approveInvestorsByBatch(PoolIndex, 2, 2);
+        await testContract.connect(addr2).approveInvestorsByBatch(PoolIndex, 4, 2);
 
         // deposit before setup token
         let _amountToken = await testContract.getDepositAmountBusd(PoolIndex, 10); // get 10% amount depsoti token 
@@ -399,7 +403,9 @@ describe("RIR", async function () {
         ); // approve more rir than busd (addrs[2])
 
         // try approve
-        await testContract.connect(addr2).approveInvestors(PoolIndex);
+        await testContract.connect(addr2).approveInvestorsByBatch(PoolIndex, 0, 4);
+        await testContract.connect(addr2).approveInvestorsByBatch(PoolIndex, 2, 4);
+        //await testContract.connect(addr2).approveInvestorsByBatch(PoolIndex, 4, 6);
 
         // deposit
         await setTokenAddress();
@@ -474,7 +480,7 @@ describe("RIR", async function () {
         ); // approve more rir than busd (addrs[2])
 
         // try approve
-        await testContract.connect(addr2).approveInvestors(PoolIndex);
+        await testContract.connect(addr2).approveInvestorsByBatch(PoolIndex, 0, 6);
 
         await expect(testContract.connect(addr2).withdrawBusdFunds(PoolIndex)).to.revertedWith("112");
         await setWithdrawAddress();

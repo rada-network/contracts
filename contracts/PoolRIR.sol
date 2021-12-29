@@ -66,6 +66,7 @@ contract PoolRIR is
 
     // Approve Investor
     function approveInvestors(uint64 _poolIdx) override external virtual onlyApprover {
+        /*
         require(_poolIdx < pools.length, "89"); // Pool not available
 
         POOL_INFO memory pool = pools[_poolIdx]; // pool info
@@ -109,8 +110,61 @@ contract PoolRIR is
         poolsStat[_poolIdx].approvedBusd = _totalAllocationBusd;
         poolsStat[_poolIdx].approvedRir = _totalAllocationRir;
         poolsStat[_poolIdx].approvedCount = investorsAddress[_poolIdx].length;
+        */
     }
 
+    // Approve Investor by batch 1000
+    function approveInvestorsByBatch(uint64 _poolIdx, uint256 _start, uint256 _limit) external virtual onlyApprover {
+        //require(_poolIdx < pools.length, "89"); // Pool not available
+
+        POOL_INFO memory pool = pools[_poolIdx]; // pool info
+
+        //require(_start < investorsAddress[_poolIdx].length, "Out of bound");
+
+        // require pool is locked
+        require(pool.locked, "90"); // Pool not locked
+        // check for approved amount
+        uint256 _totalAllocationBusd = poolsStat[_poolIdx].approvedBusd;
+        uint256 _totalAllocationRir = poolsStat[_poolIdx].approvedRir;
+
+        uint256 _end = _start + _limit;
+        if (_end > investorsAddress[_poolIdx].length) _end = investorsAddress[_poolIdx].length;
+
+        for (uint256 i=_start; i < _end; i++) {
+            address _address = investorsAddress[_poolIdx][i];
+            Investor memory investor = investors[_poolIdx][_address];
+
+            require(
+                investor.claimedToken.mul(pool.price).div(1e18) <= investor.allocationBusd // make sure the claim less amount
+                && investor.allocationBusd <= investor.amountBusd // Busd approve less prefunded
+                && investor.allocationRir <= investor.amountRir // Rir approve less prefunded
+                && (investor.allocationRir > 0 || investor.amountRir == 0) // Rir investor must be approved rir allocation
+                && investor.allocationRir.mul(RIR_RATE) <= investor.allocationBusd // Rir allocation converted must less Busd allocation
+                ,
+                "91"
+            );
+
+            if (!investor.approved && investor.allocationBusd > 1) {
+                _totalAllocationBusd += investor.allocationBusd;
+                _totalAllocationRir += investor.allocationRir;
+            }
+        }
+        require(_totalAllocationBusd > 0 && _totalAllocationBusd <= pool.allocationBusd, "92"); // Exceeds total allocation Busd or not import winners
+        require(_totalAllocationRir <= pool.allocationRir, "93"); // Exceeds total allocation RIR
+
+        // approve
+        for (uint256 i=_start; i < _end; i++) {
+            address _address = investorsAddress[_poolIdx][i];
+            if (!investors[_poolIdx][_address].approved) {
+                poolsStat[_poolIdx].approvedCount++;
+            }
+            investors[_poolIdx][_address].approved = true;
+        }
+
+        poolsStat[_poolIdx].approvedBusd = _totalAllocationBusd;
+        poolsStat[_poolIdx].approvedRir = _totalAllocationRir;
+        // poolsStat[_poolIdx].approvedCount = investorsAddress[_poolIdx].length;
+    }
 
     /* Make a payment */
     function makePayment(
