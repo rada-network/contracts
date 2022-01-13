@@ -247,7 +247,7 @@ describe("Pool Share", async function () {
         await testContract.connect(addrs[6]).makePayment(PoolIndex, pe("300"), pe("0"));  // more to max        
 
         // now approve Investor - Revert with Not import winner list
-        await expect(testContract.connect(addr2).approveInvestors(PoolIndex)).to.revertedWith("91");
+        await expect(testContract.connect(addr2).approveInvestors(PoolIndex)).to.revertedWith("No Winner");
         
         // import winners
         await expect(testContract.connect(addr1).importWinners(
@@ -270,23 +270,23 @@ describe("Pool Share", async function () {
             [pe("2"), pe("0"), pe("0"), pe("0"), pe("0"), pe("0")]
         ); // approve more rir than busd (addrs[2])
         // approve fail
-        await expect(testContract.connect(addr2).approveInvestors(PoolIndex)).to.revertedWith("91"); // not all rir prefund are approved
+        //await expect(testContract.connect(addr2).approveInvestors(PoolIndex)).to.revertedWith("No Winner"); // not all rir prefund are approved
 
-        await testContract.connect(addr1).importWinners(
+        await expect(testContract.connect(addr1).importWinners(
             PoolIndex,
             [addrs[1].address, addrs[2].address, addrs[3].address, addrs[4].address, addrs[5].address, addrs[6].address],
             [pe("300"), pe("100"), pe("100"), pe("200"), pe("200"), pe("200")],
             [pe("1"), pe("1"), pe("0"), pe("1"), pe("1"), pe("0")]
-        ); // approve more rir than busd (addrs[2])
-        await expect(testContract.connect(addr2).approveInvestors(PoolIndex)).to.revertedWith("92"); // more rir than allow
+        )).to.revertedWith("92"); // approve more rir than busd (addrs[2])
+        //await expect(testContract.connect(addr2).approveInvestors(PoolIndex)).to.revertedWith("92"); // more rir than allow
 
-        await testContract.connect(addr1).importWinners(
+        await expect(testContract.connect(addr1).importWinners(
             PoolIndex,
             [addrs[1].address, addrs[2].address, addrs[3].address, addrs[4].address, addrs[5].address, addrs[6].address],
             [pe("200"), pe("100"), pe("100"), pe("200"), pe("200"), pe("200")],
             [pe("2"), pe("1"), pe("0"), pe("1"), pe("1"), pe("0")]
-        ); // approve more rir than busd (addrs[2])
-        await expect(testContract.connect(addr2).approveInvestors(PoolIndex)).to.revertedWith("93"); // more rir than allow
+        )).to.revertedWith("93"); // approve more rir than busd (addrs[2])
+        //await expect(testContract.connect(addr2).approveInvestors(PoolIndex)).to.revertedWith("93"); // more rir than allow
 
         await testContract.connect(addr1).importWinners(
             PoolIndex,
