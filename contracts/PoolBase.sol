@@ -562,26 +562,25 @@ contract PoolBase is
     function refund(uint64 _poolIdx) internal isClaimable {
         if (investors[_poolIdx][msg.sender].refunded == false) {
             (uint256 _busdRefundable, uint256 _rirRefundable) = getRefundable(_poolIdx);
-
-            require( busdToken.balanceOf(address(this)) >= _busdRefundable, "Not enough BUSD" ); // Not enough Busd
-            require( rirToken.balanceOf(address(this)) >= _rirRefundable, "Not enough RIR" ); // Not enough Rir
-
+            
             // refunded
             investors[_poolIdx][msg.sender].refunded = true;
 
             if (_busdRefundable > 0) {
+                require( busdToken.balanceOf(address(this)) >= _busdRefundable, "Not enough BUSD" ); // Not enough Busd
                 require(
                     busdToken.transfer(msg.sender, _busdRefundable),
                     "Refund BUSD Failed" // ERC20 transfer failed - refund Busd
-                );            
+                );
             }
+
             if (_rirRefundable > 0) {
+                require( rirToken.balanceOf(address(this)) >= _rirRefundable, "Not enough RIR" ); // Not enough Rir
                 require(
                     rirToken.transfer(msg.sender, _rirRefundable),
                     "Refund RIR Failed" // ERC20 transfer failed - refund Rir
                 );
             }
-
         }        
     }
 

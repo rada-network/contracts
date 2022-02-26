@@ -318,12 +318,12 @@ module.exports = {
             // accounts: { mnemonic: mnemonic }
         },
         maticmain: {
-            url: "https://rpc-mainnet.matic.network",
+            url: "https://polygon-rpc.com",
             chainId: 137,
             accounts: [process.env.PRIVATE_KEY]
         },
         matictest: {
-            url: "https://rpc-mumbai.maticvigil.com",
+            url: "https://matic-mumbai.chainstacklabs.com",
             chainId: 80001,
             accounts: [process.env.PRIVATE_KEY]
         }

@@ -106,4 +106,29 @@ contract PoolWhitelist is
     function getRefundable (uint64 _poolIdx) override public pure returns (uint256, uint256) {
         return (0, 0);
     }
+
+    // update pool stat after pool end
+    function recount(uint64 _poolIdx) external virtual onlyModerator {
+        POOL_INFO memory pool = pools[_poolIdx]; // pool info
+        // require pool is locked
+        require(pool.locked, "34"); // Pool not locked
+        require(block.timestamp > pool.endDate, "Pool is active!"); // The Pool is active for purchasing
+
+        // check for approved amount
+        uint256 _totalAllocationBusd;
+        uint256 _approvedCount;
+        for (uint256 i; i < investorsAddress[_poolIdx].length; i++) {
+            address _address = investorsAddress[_poolIdx][i];
+            Investor memory investor = investors[_poolIdx][_address];
+
+            if (investor.paid && investor.approved && investor.allocationBusd > 1) {
+                _totalAllocationBusd += investor.allocationBusd;
+                _approvedCount++;
+            }
+        }
+
+        poolsStat[_poolIdx].approvedBusd = _totalAllocationBusd; 
+        poolsStat[_poolIdx].amountBusd = _totalAllocationBusd; 
+        poolsStat[_poolIdx].approvedCount = _approvedCount; 
+    }
 }
